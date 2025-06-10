@@ -75,17 +75,22 @@ app.use(cors({
       'https://pos.soswir.com'
     ];
     
+    console.log(`CORS check - Origin: ${origin}, Allowed origins:`, allowedOrigins);
+    
     if (!origin) return callback(null, true);
     
     if (allowedOrigins.includes(origin) || !isProduction) {
+      console.log(`CORS: Allowing origin ${origin}`);
       callback(null, true);
     } else {
+      console.log(`CORS: Blocking origin ${origin}`);
       callback(new Error('CORS Policy: Origin not allowed'));
     }
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
   maxAge: 86400
 }));
 

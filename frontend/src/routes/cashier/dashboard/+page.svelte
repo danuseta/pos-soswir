@@ -2,12 +2,14 @@
   import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "$lib/components/ui/card";
   import { Alert, AlertDescription, AlertTitle } from "$lib/components/ui/alert";
   import { Badge } from "$lib/components/ui/badge";
-  import { DollarSign, ShoppingCart, TrendingUp, Package, AlertTriangle, Calendar } from "lucide-svelte";
+  import { DollarSign, ShoppingCart, TrendingUp, Package, AlertTriangle, Calendar, Truck } from "lucide-svelte";
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { BACKEND_URL, getAuthHeaders } from "$lib/apiConfig";
   import { browser } from '$app/environment';
   import IconWrapper from "$lib/components/IconWrapper.svelte";
+  import { formatTransactionDateTime } from "$lib/utils/format";
+  import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "$lib/components/ui/table";
 
   let dashboardData = {
     todayStats: { transactions: 0, revenue: 0 },
@@ -15,7 +17,8 @@
     totals: { products: 0, lowStockProducts: 0 },
     recentSales: [],
     lowStockProducts: [],
-    topProducts: []
+    topProducts: [],
+    pubjStock: []
   };
 
   let isLoading = true;
@@ -194,7 +197,7 @@
                 <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                   <div class="flex-1 min-w-0">
                     <p class="font-medium truncate">{sale.customer_name}</p>
-                    <p class="text-sm text-muted-foreground">{formatDate(sale.created_at)}</p>
+                    <p class="text-sm text-muted-foreground">{formatTransactionDateTime(sale.created_at)}</p>
                     <Badge variant="secondary" class="text-xs">{sale.payment_method}</Badge>
                   </div>
                   <div class="text-right ml-2">
@@ -278,6 +281,79 @@
         </CardContent>
       </Card>
     {/if}
+
+    <Card>
+      <CardHeader>
+        <CardTitle class="flex items-center gap-2">
+          <IconWrapper icon={Truck} className="h-5 w-5 text-purple-600" />
+          Stok PUBJ
+        </CardTitle>
+        <CardDescription>Data stok produk PUBJ 30 hari terakhir</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {#if dashboardData.pubjStock.length > 0}
+          <div class="border rounded-lg overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Tanggal</TableHead>
+                  <TableHead>Produk</TableHead>
+                  <TableHead>Nama Supplier</TableHead>
+                  <TableHead class="text-center">Stok Masuk</TableHead>
+                  <TableHead class="text-center">Terjual</TableHead>
+                  <TableHead class="text-center">Dikembalikan</TableHead>
+                  <TableHead class="text-right">Pendapatan Supplier</TableHead>
+                  <TableHead class="text-center">Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {#each dashboardData.pubjStock as stock}
+                  <TableRow>
+                    <TableCell>
+                      <div class="flex items-center gap-2">
+                        <IconWrapper icon={Calendar} className="h-4 w-4 text-primary" />
+                        {new Date(stock.tanggal).toLocaleDateString('id-ID')}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div class="flex items-center gap-2">
+                        <div class="w-8 h-8 bg-purple-100 dark:bg-purple-900/20 rounded flex items-center justify-center">
+                          <IconWrapper icon={Package} className="h-4 w-4 text-purple-600" />
+                        </div>
+                        <span class="font-medium">{stock.produk}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span class="text-sm font-medium">{stock.nama_supplier}</span>
+                    </TableCell>
+                    <TableCell class="text-center font-medium">{stock.stok_masuk}</TableCell>
+                    <TableCell class="text-center">
+                      <span class="font-medium text-green-600">{stock.terjual}</span>
+                    </TableCell>
+                    <TableCell class="text-center">
+                      <span class="font-medium text-red-600">{stock.sisa}</span>
+                    </TableCell>
+                    <TableCell class="text-right font-mono">
+                      {formatCurrency(stock.pendapatan_supplier || 0)}
+                    </TableCell>
+                    <TableCell class="text-center">
+                      <Badge variant={stock.status === 'active' ? 'default' : stock.status === 'completed' ? 'secondary' : 'outline'}>
+                        {stock.status === 'active' ? 'Aktif' : stock.status === 'completed' ? 'Selesai' : 'Dikembalikan'}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                {/each}
+              </TableBody>
+            </Table>
+          </div>
+        {:else}
+          <div class="text-center py-8 text-muted-foreground">
+            <IconWrapper icon={Truck} className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p>Belum ada data stok PUBJ dalam 30 hari terakhir</p>
+          </div>
+        {/if}
+      </CardContent>
+    </Card>
   {/if}
 </div>
 

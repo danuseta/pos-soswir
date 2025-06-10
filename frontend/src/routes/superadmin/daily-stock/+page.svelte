@@ -65,7 +65,28 @@
 
   let filterTimeout;
 
+  $: if (selectedDate !== undefined || selectedSupplier !== undefined || selectedStatus !== undefined) {
+    if (browser && !isLoading) {
+      if (filterTimeout) {
+        clearTimeout(filterTimeout);
+      }
+      filterTimeout = setTimeout(() => {
+        loadDailyEntries();
+      }, 300);
+    }
+  }
 
+  $: {
+    if (browser && !isLoading) {
+      if (filterTimeout) {
+        clearTimeout(filterTimeout);
+      }
+      filterTimeout = setTimeout(() => {
+        console.log('Filter changed - Date:', selectedDate, 'Supplier:', selectedSupplier, 'Status:', selectedStatus);
+        loadDailyEntries();
+      }, 300);
+    }
+  }
 
   function formatCurrency(amount) {
     return new Intl.NumberFormat('id-ID', {
@@ -171,6 +192,7 @@
       if (selectedStatus) params.append('status', selectedStatus);
 
       console.log('Loading daily entries with params:', params.toString());
+      console.log('Selected date:', selectedDate, 'Type:', typeof selectedDate);
       
       const response = await fetch(`${BACKEND_URL}/api/daily-stock?${params}`, {
         headers: getAuthHeaders()
@@ -179,6 +201,10 @@
       if (response.ok) {
         dailyEntries = await response.json();
         console.log('Daily entries loaded:', dailyEntries.length, 'entries');
+        if (selectedDate) {
+          console.log('Entries with matching date:', dailyEntries.filter(e => e.entry_date === selectedDate).length);
+          console.log('Sample entry dates:', dailyEntries.slice(0, 5).map(e => ({ id: e.id, entry_date: e.entry_date, product_name: e.product_name })));
+        }
       } else {
         console.warn("Failed to load daily stock entries");
         dailyEntries = [];
@@ -401,10 +427,18 @@
   }
 
   function openGlobalCompletionDialog() {
-    const today = new Date().toISOString().split('T')[0];
-    const activeToday = dailyEntries.filter(entry => 
-      entry.status === 'active' && entry.entry_date === today
-    );
+    const now = new Date();
+    const wibOffset = 7 * 60;
+    const wibTime = new Date(now.getTime() + (wibOffset * 60000));
+    const today = wibTime.toISOString().split('T')[0];
+    
+    const activeToday = dailyEntries.filter(entry => {
+      const entryDate = entry.entry_date ? entry.entry_date.split('T')[0] : '';
+      return entry.status === 'active' && entryDate === today;
+    });
+    
+    console.log('Open global completion dialog - Today (WIB):', today);
+    console.log('Active entries today:', activeToday.length);
     
     if (activeToday.length === 0) {
       showAlertMessage('info', 'Tidak ada entry aktif untuk hari ini yang perlu diselesaikan');
@@ -419,7 +453,13 @@
     try {
       showAlertMessage('info', 'Menyelesaikan semua stok harian aktif...');
 
-      const today = new Date().toISOString().split('T')[0];
+      const now = new Date();
+      const wibOffset = 7 * 60;
+      const wibTime = new Date(now.getTime() + (wibOffset * 60000));
+      const today = wibTime.toISOString().split('T')[0];
+      
+      console.log('Complete all entries - Today (WIB):', today);
+      
       const response = await fetch(`${BACKEND_URL}/api/daily-stock/auto-complete`, {
         method: 'POST',
         headers: {
@@ -454,10 +494,18 @@
   }
 
   function updateGlobalCompletionData() {
-    const today = new Date().toISOString().split('T')[0];
-    const activeToday = dailyEntries.filter(entry => 
-      entry.status === 'active' && entry.entry_date === today
-    );
+    const now = new Date();
+    const wibOffset = 7 * 60;
+    const wibTime = new Date(now.getTime() + (wibOffset * 60000));
+    const today = wibTime.toISOString().split('T')[0];
+    
+    const activeToday = dailyEntries.filter(entry => {
+      const entryDate = entry.entry_date ? entry.entry_date.split('T')[0] : '';
+      return entry.status === 'active' && entryDate === today;
+    });
+    
+    console.log('Update global completion data - Today (WIB):', today);
+    console.log('Active entries today:', activeToday.length);
     
     globalCompletionData = {
       totalEntries: activeToday.length,
@@ -473,7 +521,17 @@
         entry.product_name.toLowerCase().includes(searchLower) ||
         entry.supplier_name.toLowerCase().includes(searchLower);
       
-      const matchesDate = !selectedDate || entry.entry_date === selectedDate;
+      const entryDate = entry.entry_date ? entry.entry_date.split('T')[0] : '';
+      const matchesDate = !selectedDate || entryDate === selectedDate;
+      
+      if (selectedDate && entry.id === 1) {
+        console.log('Date filtering debug:', {
+          selectedDate,
+          entry_date_raw: entry.entry_date,
+          entryDate_extracted: entryDate,
+          matchesDate
+        });
+      }
       
       const matchesSupplier = !selectedSupplier || entry.supplier_id.toString() === selectedSupplier;
       
@@ -528,12 +586,10 @@
   }
 
   function clearFilters() {
-    searchTerm = '';
-    selectedDate = '';
-    selectedSupplier = '';
-    selectedStatus = '';
-    sortField = 'entry_date';
-    sortDirection = 'desc';
+    selectedDate = "";
+    selectedSupplier = "";
+    selectedStatus = "";
+    searchTerm = "";
     currentPage = 1;
   }
 </script>

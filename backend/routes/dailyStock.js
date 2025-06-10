@@ -317,6 +317,14 @@ router.get("/summary/:date", authenticateToken, async (req, res) => {
   }
 });
 
+router.options("/:id/complete", (req, res) => {
+  res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
+  res.header("Access-Control-Allow-Methods", "PATCH, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.sendStatus(200);
+});
+
 router.patch("/:id/complete", authenticateToken, authorizeRole(["superadmin"]), async (req, res) => {
   try {
     const entryId = req.params.id;

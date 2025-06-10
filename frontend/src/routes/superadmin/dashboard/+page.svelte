@@ -13,6 +13,7 @@
   import IconWrapper from "$lib/components/IconWrapper.svelte";
   import AlertMessage from "$lib/components/AlertMessage.svelte";
   import { useAlert } from "$lib/composables/useAlert";
+  import { formatTransactionDateTime } from "$lib/utils/format";
   
   import { Line } from 'svelte-chartjs';
   import {
@@ -689,7 +690,7 @@
                   <div class="flex-1 min-w-0">
                     <p class="font-medium truncate">{transaction.customer_name}</p>
                     <div class="flex items-center gap-2 text-sm text-muted-foreground">
-                      <span>{formatDate(transaction.created_at)}</span>
+                      <span>{formatTransactionDateTime(transaction.created_at)}</span>
                       <Badge variant="secondary" class="text-xs">{transaction.cashier_name || 'Unknown'}</Badge>
                     </div>
                     {#if transaction.categories}

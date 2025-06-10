@@ -170,58 +170,58 @@ router.get("/revenue", authenticateToken, authorizeRole(["superadmin"]), async (
     
     const [dailyRevenue] = await connection.query(`
       SELECT 
-        DATE_FORMAT(CONVERT_TZ(s.created_at, '+00:00', '+07:00'), '%Y-%m-%d') as date,
+        DATE_FORMAT(s.created_at, '%Y-%m-%d') as date,
         SUM(s.total_amount) as total_revenue,
         COALESCE(SUM(st.store_profit), 0) as store_profit,
         COALESCE(SUM(st.supplier_amount), 0) as supplier_profit,
         COUNT(s.id) as transaction_count
       FROM sales s
       LEFT JOIN sale_taxes st ON s.id = st.sale_id
-      WHERE CONVERT_TZ(s.created_at, '+00:00', '+07:00') >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-      GROUP BY DATE_FORMAT(CONVERT_TZ(s.created_at, '+00:00', '+07:00'), '%Y-%m-%d')
+      WHERE s.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+      GROUP BY DATE_FORMAT(s.created_at, '%Y-%m-%d')
       ORDER BY date DESC
     `);
 
     const [weeklyRevenue] = await connection.query(`
       SELECT 
-        YEAR(CONVERT_TZ(s.created_at, '+00:00', '+07:00')) as year,
-        WEEK(CONVERT_TZ(s.created_at, '+00:00', '+07:00'), 1) as week,
+        YEAR(s.created_at) as year,
+        WEEK(s.created_at, 1) as week,
         SUM(s.total_amount) as total_revenue,
         COALESCE(SUM(st.store_profit), 0) as store_profit,
         COALESCE(SUM(st.supplier_amount), 0) as supplier_profit,
         COUNT(s.id) as transaction_count
       FROM sales s
       LEFT JOIN sale_taxes st ON s.id = st.sale_id
-      WHERE CONVERT_TZ(s.created_at, '+00:00', '+07:00') >= DATE_SUB(NOW(), INTERVAL 12 WEEK)
-      GROUP BY YEAR(CONVERT_TZ(s.created_at, '+00:00', '+07:00')), WEEK(CONVERT_TZ(s.created_at, '+00:00', '+07:00'), 1)
+      WHERE s.created_at >= DATE_SUB(NOW(), INTERVAL 12 WEEK)
+      GROUP BY YEAR(s.created_at), WEEK(s.created_at, 1)
       ORDER BY year DESC, week DESC
     `);
 
     const [monthlyRevenue] = await connection.query(`
       SELECT 
-        YEAR(CONVERT_TZ(s.created_at, '+00:00', '+07:00')) as year,
-        MONTH(CONVERT_TZ(s.created_at, '+00:00', '+07:00')) as month,
+        YEAR(s.created_at) as year,
+        MONTH(s.created_at) as month,
         SUM(s.total_amount) as total_revenue,
         COALESCE(SUM(st.store_profit), 0) as store_profit,
         COALESCE(SUM(st.supplier_amount), 0) as supplier_profit,
         COUNT(s.id) as transaction_count
       FROM sales s
       LEFT JOIN sale_taxes st ON s.id = st.sale_id
-      WHERE CONVERT_TZ(s.created_at, '+00:00', '+07:00') >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
-      GROUP BY YEAR(CONVERT_TZ(s.created_at, '+00:00', '+07:00')), MONTH(CONVERT_TZ(s.created_at, '+00:00', '+07:00'))
+      WHERE s.created_at >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+      GROUP BY YEAR(s.created_at), MONTH(s.created_at)
       ORDER BY year DESC, month DESC
     `);
 
     const [yearlyRevenue] = await connection.query(`
       SELECT 
-        YEAR(CONVERT_TZ(s.created_at, '+00:00', '+07:00')) as year,
+        YEAR(s.created_at) as year,
         SUM(s.total_amount) as total_revenue,
         COALESCE(SUM(st.store_profit), 0) as store_profit,
         COALESCE(SUM(st.supplier_amount), 0) as supplier_profit,
         COUNT(s.id) as transaction_count
       FROM sales s
       LEFT JOIN sale_taxes st ON s.id = st.sale_id
-      GROUP BY YEAR(CONVERT_TZ(s.created_at, '+00:00', '+07:00'))
+      GROUP BY YEAR(s.created_at)
       ORDER BY year DESC
     `);
 
@@ -257,18 +257,18 @@ router.get("/revenue/detail", authenticateToken, authorizeRole(["superadmin"]), 
 
     switch (type) {
       case "daily":
-        whereClause = "DATE_FORMAT(CONVERT_TZ(s.created_at, '+00:00', '+07:00'), '%Y-%m-%d') = ?";
+        whereClause = "DATE_FORMAT(s.created_at, '%Y-%m-%d') = ?";
         break;
       case "weekly":
         const [year, week] = date.split('-W');
-        whereClause = "YEAR(CONVERT_TZ(s.created_at, '+00:00', '+07:00')) = ? AND WEEK(CONVERT_TZ(s.created_at, '+00:00', '+07:00'), 1) = ?";
+        whereClause = "YEAR(s.created_at) = ? AND WEEK(s.created_at, 1) = ?";
         break;
       case "monthly":
         const [yearMonth, month] = date.split('-');
-        whereClause = "YEAR(CONVERT_TZ(s.created_at, '+00:00', '+07:00')) = ? AND MONTH(CONVERT_TZ(s.created_at, '+00:00', '+07:00')) = ?";
+        whereClause = "YEAR(s.created_at) = ? AND MONTH(s.created_at) = ?";
         break;
       case "yearly":
-        whereClause = "YEAR(CONVERT_TZ(s.created_at, '+00:00', '+07:00')) = ?";
+        whereClause = "YEAR(s.created_at) = ?";
         break;
       default:
         return res.status(400).json({ message: "Invalid type parameter" });
@@ -294,15 +294,14 @@ router.get("/revenue/detail", authenticateToken, authorizeRole(["superadmin"]), 
       SELECT 
         id,
         created_at,
-        CONVERT_TZ(created_at, '+00:00', '+07:00') as created_at_wib,
-        DATE_FORMAT(CONVERT_TZ(created_at, '+00:00', '+07:00'), '%Y-%m-%d') as created_date_wib,
+        DATE_FORMAT(created_at, '%Y-%m-%d') as created_date,
         total_amount
       FROM sales 
       ORDER BY created_at DESC 
       LIMIT 5
     `);
     
-    console.log('Recent sales for debugging (with WIB conversion):', debugSales);
+    console.log('Recent sales for debugging (without timezone conversion):', debugSales);
 
     const [details] = await connection.query(`
       SELECT 

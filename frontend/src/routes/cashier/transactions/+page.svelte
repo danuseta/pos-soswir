@@ -122,7 +122,7 @@
       return;
     }
 
-    const headers = ["Waktu", "Produk", "Kategori", "Jumlah", "Harga", "Total", "Kasir", "Metode Pembayaran", "Keuntungan Toko", "Keuntungan Supplier"];
+    const headers = ["Waktu", "Produk", "Kategori", "Jumlah", "Harga", "Total", "Kasir", "Metode Pembayaran"];
     let csvContent = headers.join(",") + "\n";
     
     filteredTransactions.forEach((transaction) => {
@@ -134,9 +134,7 @@
         transaction.harga,
         transaction.total,
         transaction.kasir,
-        transaction.payment_method || 'Cash',
-        transaction.keuntungan_toko || 0,
-        transaction.keuntungan_supplier || 0
+        transaction.payment_method || 'Cash'
       ];
       
       const formattedRow = row.map(field => {
@@ -184,6 +182,7 @@
 
   function clearFilters() {
     searchTerm = '';
+    dateRange = { from: null, to: null };
     sortField = 'waktu';
     sortDirection = 'desc';
     currentPage = 1;
@@ -198,12 +197,11 @@
     
     let matchesDateRange = true;
     if (dateRange.from && dateRange.to) {
-      const txDate = new Date(t.waktu);
-      const fromDate = dateRange.from;
-      const toDate = new Date(dateRange.to);
-      toDate.setHours(23, 59, 59, 999);
+      const txDateString = t.waktu ? t.waktu.split('T')[0] : '';
+      const fromDateString = dateRange.from instanceof Date ? dateRange.from.toISOString().split('T')[0] : dateRange.from;
+      const toDateString = dateRange.to instanceof Date ? dateRange.to.toISOString().split('T')[0] : dateRange.to;
       
-      matchesDateRange = txDate >= fromDate && txDate <= toDate;
+      matchesDateRange = txDateString >= fromDateString && txDateString <= toDateString;
     }
     
     return matchesSearch && matchesDateRange;
@@ -407,8 +405,6 @@
                     />
                   </div>
                 </TableHead>
-                <TableHead class="w-[110px] text-center">Keuntungan Toko</TableHead>
-                <TableHead class="w-[120px] text-center">Keuntungan Supplier</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -452,20 +448,6 @@
                     <Badge variant="outline" class="text-xs">
                       {transaction.payment_method || 'Cash'}
                     </Badge>
-                  </TableCell>
-                  <TableCell class="w-[110px] text-center">
-                    <span class="font-mono text-sm text-primary font-medium">
-                      {formatCurrency(transaction.keuntungan_toko || 0)}
-                    </span>
-                  </TableCell>
-                  <TableCell class="w-[120px] text-center">
-                    {#if transaction.is_reseller && transaction.keuntungan_supplier > 0}
-                      <span class="font-mono text-sm text-destructive font-medium">
-                        {formatCurrency(transaction.keuntungan_supplier)}
-                      </span>
-                    {:else}
-                      <span class="text-muted-foreground text-sm">-</span>
-                    {/if}
                   </TableCell>
                 </TableRow>
               {/each}

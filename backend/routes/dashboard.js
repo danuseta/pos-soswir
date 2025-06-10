@@ -254,6 +254,26 @@ router.get("/cashier", authenticateToken, async (req, res) => {
       LIMIT 5
     `, [userId]);
 
+    const [pubjStock] = await connection.query(`
+      SELECT 
+        dse.id,
+        dse.entry_date as tanggal,
+        p.name as produk,
+        sup.name as nama_supplier,
+        dse.quantity_in as stok_masuk,
+        dse.quantity_sold as terjual,
+        dse.quantity_returned as sisa,
+        dse.supplier_earning as pendapatan_supplier,
+        dse.status
+      FROM daily_stock_entries dse
+      JOIN products p ON dse.product_id = p.id
+      JOIN categories c ON p.category_id = c.id
+      JOIN suppliers sup ON dse.supplier_id = sup.id
+      WHERE c.is_reseller = 1 AND dse.entry_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+      ORDER BY dse.entry_date DESC, p.name ASC
+      LIMIT 20
+    `);
+
     const [productCount] = await connection.query(`SELECT COUNT(*) as count FROM products`);
 
     connection.release();
@@ -277,7 +297,8 @@ router.get("/cashier", authenticateToken, async (req, res) => {
       },
       recentSales: recentSales || [],
       lowStockProducts: lowStockProducts || [],
-      topProducts: topProducts || []
+      topProducts: topProducts || [],
+      pubjStock: pubjStock || []
     });
 
   } catch (error) {

@@ -354,7 +354,10 @@
       
       const response = await fetch(`${BACKEND_URL}/api/products/${toggleTargetProduct.id}/toggle-active`, {
         method: 'PATCH',
-        headers: getAuthHeaders()
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json'
+        }
       });
       
       if (response.ok) {

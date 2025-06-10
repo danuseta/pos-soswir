@@ -1,4 +1,3 @@
-
 export function formatDateTime(dateString: string): string {
   if (!dateString) return '';
   
@@ -13,6 +12,23 @@ export function formatDateTime(dateString: string): string {
                      'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
   
   return `${day} ${monthNames[month - 1]} ${year}, ${String(hours).padStart(2, '0')}.${String(minutes).padStart(2, '0')}`;
+}
+
+export function formatTransactionDateTime(dateString: string): string {
+  if (!dateString) return 'Tanggal tidak valid';
+  
+  try {
+    const parts = dateString.replace('T', ' ').split(' ');
+    const datePart = parts[0];
+    const timePart = parts[1] ? parts[1].split('.')[0] : '00:00:00';
+    
+    const [year, month, day] = datePart.split('-').map(Number);
+    const [hours, minutes] = timePart.split(':').map(Number);
+    
+    return `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year} ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+  } catch (e) {
+    return 'Tanggal tidak valid';
+  }
 }
 
 export function formatCurrency(amount: number): string {

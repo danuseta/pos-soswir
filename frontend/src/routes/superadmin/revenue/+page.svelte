@@ -124,12 +124,11 @@
   }
 
   function formatDate(dateString) {
-    return new Date(dateString).toLocaleDateString('id-ID', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      timeZone: 'Asia/Jakarta'
-    });
+    const [year, month, day] = dateString.split('-').map(Number);
+    const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 
+                       'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    
+    return `${day} ${monthNames[month - 1]} ${year}`;
   }
 
   function formatDateTime(dateString) {

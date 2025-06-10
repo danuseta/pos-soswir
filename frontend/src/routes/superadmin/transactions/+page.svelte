@@ -265,6 +265,7 @@
 
   function clearFilters() {
     searchTerm = '';
+    dateRange = { from: null, to: null };
     sortField = 'waktu';
     sortDirection = 'desc';
     currentPage = 1;
@@ -279,12 +280,11 @@
     
     let matchesDateRange = true;
     if (dateRange.from && dateRange.to) {
-      const txDate = new Date(t.waktu);
-      const fromDate = dateRange.from;
-      const toDate = new Date(dateRange.to);
-      toDate.setHours(23, 59, 59, 999);
+      const txDateString = t.waktu ? t.waktu.split('T')[0] : '';
+      const fromDateString = dateRange.from instanceof Date ? dateRange.from.toISOString().split('T')[0] : dateRange.from;
+      const toDateString = dateRange.to instanceof Date ? dateRange.to.toISOString().split('T')[0] : dateRange.to;
       
-      matchesDateRange = txDate >= fromDate && txDate <= toDate;
+      matchesDateRange = txDateString >= fromDateString && txDateString <= toDateString;
     }
     
     return matchesSearch && matchesDateRange;

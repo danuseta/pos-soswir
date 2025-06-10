@@ -225,6 +225,14 @@ router.put("/:id", authenticateToken, authorizeRole(["superadmin"]), async (req,
   }
 });
 
+router.options("/:id/toggle-active", (req, res) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin);
+  res.header('Access-Control-Allow-Methods', 'PATCH, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.sendStatus(200);
+});
+
 router.patch("/:id/toggle-active", authenticateToken, authorizeRole(["superadmin"]), async (req, res) => {
   try {
     const { id } = req.params;
