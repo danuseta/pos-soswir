@@ -1,0 +1,45 @@
+[build]
+  # Build command
+  command = "npm run build"
+  # Publish directory (where the built files are)
+  publish = "build"
+
+[build.environment]
+  # Node.js version
+  NODE_VERSION = "18"
+  # Environment for production build
+  NODE_ENV = "production"
+
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # Security headers
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+[[headers]]
+  for = "/_app/immutable/*"
+  [headers.values]
+    # Cache immutable assets for 1 year
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    # No cache for HTML files (SPA routing)
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+[functions]
+  node_bundler = "esbuild" 

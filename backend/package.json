@@ -1,0 +1,78 @@
+{
+  "name": "soswir-pos-backend",
+  "version": "2.0.0",
+  "description": "Enterprise-grade POS Backend with PM2 Process Management",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prod:start": "cross-env NODE_ENV=production pm2 start ecosystem.config.js --env production",
+    "prod:stop": "pm2 stop soswir-pos-backend",
+    "prod:restart": "pm2 restart soswir-pos-backend",
+    "prod:reload": "pm2 reload soswir-pos-backend",
+    "prod:delete": "pm2 delete soswir-pos-backend",
+    "prod:logs": "pm2 logs soswir-pos-backend",
+    "prod:monitor": "pm2 monit",
+    "prod:status": "pm2 status",
+    "staging:start": "cross-env NODE_ENV=staging pm2 start ecosystem.config.js --env staging",
+    "staging:stop": "pm2 stop soswir-pos-backend",
+    "staging:logs": "pm2 logs soswir-pos-backend",
+    "deploy:production": "pm2 deploy ecosystem.config.js production",
+    "deploy:staging": "pm2 deploy ecosystem.config.js staging",
+    "deploy:setup": "pm2 deploy ecosystem.config.js production setup",
+    "logs:clear": "pm2 flush",
+    "logs:rotate": "pm2 install pm2-logrotate",
+    "health:check": "pm2 ping",
+    "health:restart-unhealthy": "pm2 restart soswir-pos-backend --max-memory-restart 768M",
+    "cleanup:install": "npm ci --only=production",
+    "cleanup:logs": "find ./logs -name '*.log' -mtime +7 -delete 2>/dev/null || true",
+    "cleanup:temp": "rm -rf ./temp/* 2>/dev/null || true",
+    "cleanup:all": "npm run cleanup:logs && npm run cleanup:temp",
+    "performance:profile": "node --prof index.js",
+    "performance:analyze": "node --prof-process isolate-*.log > profile.txt"
+  },
+  "keywords": [
+    "pos",
+    "point-of-sale",
+    "backend",
+    "nodejs",
+    "express",
+    "mysql",
+    "pm2",
+    "enterprise"
+  ],
+  "author": "Soswir POS Team",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.9.0",
+    "bcrypt": "^6.0.0",
+    "bcryptjs": "^3.0.2",
+    "cloudinary": "^2.6.1",
+    "compression": "^1.8.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.0",
+    "mysql2": "^3.14.1",
+    "node-cron": "^4.1.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "nodemon": "^3.1.10",
+    "pm2": "^5.4.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "pm2": {
+    "apps": [
+      "ecosystem.config.js"
+    ]
+  }
+}
