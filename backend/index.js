@@ -45,6 +45,7 @@ const transactionsRoutes = require("./routes/transactions");
 const suppliersRoutes = require("./routes/suppliers");
 const dailyStockRoutes = require("./routes/dailyStock");
 const activityCleanupRoutes = require("./routes/activity-cleanup");
+const shiftsRoutes = require("./routes/shifts");
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -258,6 +259,7 @@ app.use("/api/transactions", transactionsRoutes);
 app.use("/api/suppliers", suppliersRoutes);
 app.use("/api/daily-stock", dailyStockRoutes);
 app.use("/api/activity-cleanup", activityCleanupRoutes);
+app.use("/api/shifts", shiftsRoutes);
 
 app.use('*', (req, res) => {
   res.status(404).json({
