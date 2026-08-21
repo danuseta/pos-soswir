@@ -3,6 +3,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { pool } = require("../models/db");
 const { authenticateToken } = require("../middleware/authMiddleware");
+const { isOnShift, outOfShiftMessage } = require("../utils/shiftAccess");
 
 const router = express.Router();
 
@@ -28,6 +29,16 @@ router.post("/login", async (req, res) => {
     if (!isMatch) {
       connection.release();
       return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    const shiftStatus = await isOnShift(user.id, user.role);
+    if (!shiftStatus.allowed) {
+      connection.release();
+      return res.status(403).json({
+        code: "OUT_OF_SHIFT",
+        message: outOfShiftMessage(shiftStatus.nextShift),
+        nextShift: shiftStatus.nextShift
+      });
     }
 
     await connection.query(
