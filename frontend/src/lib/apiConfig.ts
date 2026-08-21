@@ -57,10 +57,15 @@ export async function apiRequest<T = any>(
   } catch (error) {
     const apiError = handleApiError(error);
     
-    if (apiError.code === 'AUTH_ERROR' && browser) {
+    const outOfShift = apiError.status === 403 && apiError.details?.code === 'OUT_OF_SHIFT';
+
+    if ((apiError.code === 'AUTH_ERROR' || outOfShift) && browser) {
       localStorage.removeItem('pos_token');
       localStorage.removeItem('pos_user_role');
       localStorage.removeItem('pos_user_id');
+      if (outOfShift) {
+        sessionStorage.setItem('pos_logout_reason', apiError.message);
+      }
       window.location.href = '/login';
     }
     
