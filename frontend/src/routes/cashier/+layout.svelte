@@ -1,13 +1,14 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
+  import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { browser } from '$app/environment';
   import { page } from '$app/stores';
   import { ChevronDown, LogOut, LayoutDashboard, ShoppingCart, FileText, Menu, X, Sun, Moon, User, Package, History } from "lucide-svelte";
   import { logout } from "$lib/auth";
   import { trackActivity } from '$lib/activityTracker';
-  import { initializeTheme, initializeUserRole, toggleTheme, theme } from '$lib/themeUtils';
+  import { initializeTheme, toggleTheme, theme } from '$lib/themeUtils';
   import IconWrapper from "$lib/components/IconWrapper.svelte";
+  import { getInitials } from "$lib/utils";
 
   let showProfileDropdown = false;
   let showMobileSidebar = false;
@@ -28,7 +29,6 @@
       username = storedUsername || 'Kasir';
       
       initializeTheme();
-      initializeUserRole();
       
       theme.subscribe(value => {
         isDarkMode = value === 'dark';
@@ -63,14 +63,6 @@
     toggleTheme();
   }
 
-  function getInitials(name) {
-    if (!name) return 'K';
-    const words = name.trim().split(' ');
-    if (words.length === 1) {
-      return words[0].substring(0, 2).toUpperCase();
-    }
-    return words.slice(0, 2).map(word => word[0]).join('').toUpperCase();
-  }
 
   $: if ($page.url.pathname && typeof window !== 'undefined') {
     trackActivity($page.url.pathname);
@@ -90,9 +82,6 @@
 
   $: currentPath = $page.url.pathname;
 
-  function isActivePage(href) {
-    return $page.url.pathname.startsWith(href);
-  }
 </script>
 
   <div class="min-h-screen bg-muted flex">
@@ -101,24 +90,23 @@
         <div class="flex-1 flex flex-col min-h-0 bg-card border-r border-border shadow-sm">
           <div class="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
             <div class="flex items-center flex-shrink-0 px-4 mb-8">
-              <div class="relative w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 p-2 mr-3 overflow-hidden group">
-                <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+              <div class="w-10 h-10 rounded-lg bg-muted p-2 mr-3">
                 {#if isDarkMode}
                   <img 
                     src="/Logo Soswir White.png" 
                     alt="Soswir Logo" 
-                    class="w-full h-full object-contain relative z-10 filter drop-shadow-sm"
+                    class="w-full h-full object-contain"
                   />
                 {:else}
                   <img 
                     src="/Logo Soswir noBG.png" 
                     alt="Soswir Logo" 
-                    class="w-full h-full object-contain relative z-10 filter drop-shadow-sm"
+                    class="w-full h-full object-contain"
                   />
                 {/if}
               </div>
               <div>
-                <h1 class="text-lg font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                <h1 class="text-lg font-semibold text-foreground">
                   Soswir Cashier
                 </h1>
                 <p class="text-xs text-muted-foreground font-medium">Point of Sale</p>
@@ -130,9 +118,9 @@
                 {@const isActive = currentPath === item.href}
                 <a
                   href={item.href}
-                  class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 {isActive ? 'bg-primary/10 text-primary border-r-2 border-primary' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'}"
+                  class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors {isActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'}"
                 >
-                                      <IconWrapper icon={item.icon} className="mr-3 h-5 w-5 transition-all duration-200 {isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-accent-foreground'}" />
+                  <IconWrapper icon={item.icon} className="mr-3 h-5 w-5 transition-colors {isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-accent-foreground'}" />
                   {item.label}
                 </a>
               {/each}
@@ -165,24 +153,23 @@
           
           <div class="flex-1 h-0 pt-5 pb-4 overflow-y-auto">
             <div class="flex-shrink-0 flex items-center px-4 mb-8">
-              <div class="relative w-8 h-8 rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 p-1.5 mr-3 overflow-hidden group">
-                <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+              <div class="w-8 h-8 rounded-lg bg-muted p-1.5 mr-3">
                 {#if isDarkMode}
                   <img 
                     src="/Logo Soswir White.png" 
                     alt="Soswir Logo" 
-                    class="w-full h-full object-contain relative z-10 filter drop-shadow-sm"
+                    class="w-full h-full object-contain"
                   />
                 {:else}
                   <img 
                     src="/Logo Soswir noBG.png" 
                     alt="Soswir Logo" 
-                    class="w-full h-full object-contain relative z-10 filter drop-shadow-sm"
+                    class="w-full h-full object-contain"
                   />
                 {/if}
               </div>
               <div>
-                <h1 class="text-lg font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Soswir Cashier</h1>
+                <h1 class="text-lg font-semibold text-foreground">Soswir Cashier</h1>
                 <p class="text-xs text-muted-foreground">Point of Sale</p>
               </div>
             </div>
@@ -193,9 +180,9 @@
                 <a
                   href={item.href}
                   on:click={toggleMobileSidebar}
-                  class="group flex items-center px-3 py-3 text-base font-medium rounded-lg transition-all duration-200 {isActive ? 'bg-primary/10 text-primary border-r-2 border-primary' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'}"
+                  class="group flex items-center px-3 py-3 text-base font-medium rounded-lg transition-colors {isActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'}"
                 >
-                  <IconWrapper icon={item.icon} className="mr-4 h-6 w-6 transition-all duration-200 {isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-accent-foreground'}" />
+                  <IconWrapper icon={item.icon} className="mr-4 h-6 w-6 transition-colors {isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-accent-foreground'}" />
                   {item.label}
                 </a>
               {/each}

@@ -22,7 +22,7 @@
   function getClasses(type: string) {
     switch (type) {
       case 'success':
-        return 'border-l-success bg-success/10';
+        return 'border-l-primary bg-primary/10';
       case 'error':
         return 'border-l-destructive bg-destructive/10';
       case 'info':

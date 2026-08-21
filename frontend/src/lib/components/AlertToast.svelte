@@ -16,7 +16,7 @@
   function getAlertClass(type: string) {
     switch (type) {
       case 'success':
-        return 'border-l-4 border-l-success bg-success/10';
+        return 'border-l-4 border-l-primary bg-primary/10';
       case 'error':
         return 'border-l-4 border-l-destructive bg-destructive/10';
       case 'info':

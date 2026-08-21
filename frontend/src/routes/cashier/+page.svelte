@@ -248,7 +248,7 @@ import { BACKEND_URL, getAuthHeaders } from '$lib/apiConfig';
             
             {#if product.category_is_reseller}
               <div class="absolute top-2 left-2">
-                <Badge variant="outline" class="text-xs bg-orange-100 text-orange-800 border-orange-300">
+                <Badge variant="outline" class="text-xs bg-muted text-foreground border-border">
                   PUBJ
                 </Badge>
               </div>

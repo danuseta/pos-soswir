@@ -46,7 +46,6 @@
         return;
       }
       
-      showAlertMessage('info', 'Memuat pengaturan toko...');
       
       const response = await fetch(`${BACKEND_URL}/api/settings`, {
         headers: getAuthHeaders()
@@ -55,7 +54,6 @@
       if (response.ok) {
         const data = await response.json();
         settings = { ...settings, ...data };
-        showAlertMessage('success', 'Pengaturan berhasil dimuat');
       } else {
         const errorData = await response.json();
         throw new Error(errorData.message || "Gagal memuat pengaturan");

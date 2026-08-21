@@ -269,7 +269,7 @@
           <CardTitle class="text-sm font-medium">Status Auto Cleanup</CardTitle>
           <IconWrapper 
             icon={cleanupStatus?.data?.isAutoCleanupActive ? CheckCircle : AlertTriangle} 
-            className={`h-4 w-4 ${cleanupStatus?.data?.isAutoCleanupActive ? 'text-success' : 'text-destructive'}`}
+            className={`h-4 w-4 ${cleanupStatus?.data?.isAutoCleanupActive ? 'text-primary' : 'text-destructive'}`}
           />
         </CardHeader>
         <CardContent>
@@ -302,7 +302,7 @@
           <CardTitle class="text-sm font-medium">Aktivitas > 3 Hari</CardTitle>
           <IconWrapper 
             icon={Clock} 
-            className={`h-4 w-4 ${cleanupStatus?.data?.oldActivities > 0 ? 'text-destructive' : 'text-success'}`}
+            className={`h-4 w-4 ${cleanupStatus?.data?.oldActivities > 0 ? 'text-destructive' : 'text-primary'}`}
           />
         </CardHeader>
         <CardContent>
@@ -320,7 +320,7 @@
           <CardTitle class="text-sm font-medium">Event Scheduler</CardTitle>
           <IconWrapper 
             icon={Database} 
-            className={`h-4 w-4 ${cleanupStatus?.data?.eventSchedulerStatus === 'ENABLED' ? 'text-success' : 'text-destructive'}`}
+            className={`h-4 w-4 ${cleanupStatus?.data?.eventSchedulerStatus === 'ENABLED' ? 'text-primary' : 'text-destructive'}`}
           />
         </CardHeader>
         <CardContent>
@@ -348,7 +348,6 @@
             on:click={() => showRetentionDialog = true} 
             variant="outline"
             disabled={isLoadingAction}
-            class="text-purple-700 border-purple-200"
           >
             <IconWrapper icon={Sliders} className="mr-2 h-4 w-4" />
             Atur Periode Retensi
@@ -389,7 +388,7 @@
             <div class="flex justify-between items-start">
               <span>Cleanup Berikutnya:</span>
               <div class="text-right">
-                <div class="font-mono text-success">
+                <div class="font-mono text-primary">
                   {cleanupStatus?.data?.nextCleanup || 'Tidak tersedia'}
                 </div>
                 <div class="text-xs text-muted-foreground">
@@ -411,13 +410,13 @@
             <div class="mt-3 pt-3 border-t border-border">
               <div class="flex items-center gap-2">
                 {#if cleanupStatus?.data?.oldActivities === 0}
-                  <IconWrapper icon={CheckCircle} className="h-4 w-4 text-success" />
-                  <span class="text-success font-medium">
+                  <IconWrapper icon={CheckCircle} className="h-4 w-4 text-primary" />
+                  <span class="text-primary font-medium">
                     Database bersih - Tidak ada data lama
                   </span>
                 {:else}
-                  <IconWrapper icon={AlertTriangle} className="h-4 w-4 text-yellow-500" />
-                  <span class="text-yellow-600 dark:text-yellow-400 font-medium">
+                  <IconWrapper icon={AlertTriangle} className="h-4 w-4 text-primary" />
+                  <span class="text-primary font-medium">
                     {formatNumber(cleanupStatus?.data?.oldActivities)} aktivitas perlu dibersihkan
                   </span>
                 {/if}
@@ -504,12 +503,12 @@
       </DialogDescription>
     </DialogHeader>
     
-    <div class="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg">
-      <div class="flex items-center gap-2 text-yellow-800 dark:text-yellow-200">
+    <div class="bg-muted p-4 rounded-lg">
+      <div class="flex items-center gap-2 text-foreground">
         <IconWrapper icon={AlertTriangle} className="h-4 w-4" />
         <span class="font-medium">Peringatan</span>
       </div>
-      <p class="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+      <p class="text-sm text-foreground mt-1">
         Aksi ini tidak dapat dibatalkan. Data yang dihapus tidak dapat dikembalikan.
       </p>
     </div>
@@ -559,11 +558,11 @@
             </div>
           </div>
           
-          <div class="bg-success/10 p-4 rounded-lg">
-            <div class="text-2xl font-bold text-success">
+          <div class="bg-primary/10 p-4 rounded-lg">
+            <div class="text-2xl font-bold text-primary">
               {testResult.data.retentionDays}
             </div>
-            <div class="text-sm text-success">
+            <div class="text-sm text-primary">
               Hari periode retensi
             </div>
           </div>
@@ -608,9 +607,9 @@
             </div>
           {/if}
         {:else}
-          <div class="text-center p-4 bg-success/10 rounded-lg">
-            <IconWrapper icon={CheckCircle} className="mx-auto h-8 w-8 text-success mb-2" />
-            <p class="text-success">
+          <div class="text-center p-4 bg-primary/10 rounded-lg">
+            <IconWrapper icon={CheckCircle} className="mx-auto h-8 w-8 text-primary mb-2" />
+            <p class="text-primary">
               Tidak ada data yang perlu dihapus saat ini.
             </p>
           </div>
@@ -640,12 +639,12 @@
     </DialogHeader>
     
     <div class="space-y-6">
-      <div class="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg border border-yellow-200 dark:border-yellow-800">
+      <div class="bg-muted p-4 rounded-lg border border-border">
         <div class="flex items-center mb-2">
-          <IconWrapper icon={AlertTriangle} className="mr-2 h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-          <span class="font-medium text-yellow-900 dark:text-yellow-100">Peringatan Penting</span>
+          <IconWrapper icon={AlertTriangle} className="mr-2 h-5 w-5 text-primary" />
+          <span class="font-medium text-foreground">Peringatan Penting</span>
         </div>
-        <p class="text-yellow-800 dark:text-yellow-200 text-sm">
+        <p class="text-foreground text-sm">
           Mengubah pengaturan ini akan merubah event scheduler MySQL dan berlaku segera. 
           Pastikan pengaturan yang dipilih sesuai dengan kebutuhan sistem.
         </p>
@@ -704,7 +703,7 @@
           </h4>
           <div class="grid gap-2 text-sm">
             <div class="flex items-center gap-2">
-              <IconWrapper icon={Clock} className="h-4 w-4 text-success" />
+              <IconWrapper icon={Clock} className="h-4 w-4 text-primary" />
               <span>Aktivitas akan dihapus setelah <strong>{selectedRetentionDays} hari</strong></span>
             </div>
             <div class="flex items-center gap-2">
@@ -712,7 +711,7 @@
               <span>Pembersihan otomatis <strong>setiap {selectedInterval} {selectedIntervalUnit.toLowerCase()}</strong></span>
             </div>
             <div class="flex items-center gap-2">
-              <IconWrapper icon={Database} className="h-4 w-4 text-purple-500" />
+              <IconWrapper icon={Database} className="h-4 w-4 text-primary" />
               <span>Event scheduler MySQL akan diperbarui</span>
             </div>
           </div>
@@ -727,8 +726,8 @@
                 </div>
               </div>
               <div>
-                <div class="font-medium text-purple-600 dark:text-purple-400 mb-1">Pengaturan Baru:</div>
-                <div class="text-purple-600 dark:text-purple-400">
+                <div class="font-medium text-primary mb-1">Pengaturan Baru:</div>
+                <div class="text-primary">
                   • Hapus setelah <strong>{selectedRetentionDays} hari</strong><br/>
                   • Pembersihan <strong>setiap {selectedInterval} {selectedIntervalUnit.toLowerCase()}</strong>
                 </div>
@@ -755,7 +754,6 @@
       <Button 
         on:click={updateRetentionSettings}
         disabled={isLoadingAction || !retentionOptions?.data}
-        class="bg-purple-600 hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-800"
       >
         {#if isLoadingAction}
           <IconWrapper icon={RefreshCw} className="mr-2 h-4 w-4 animate-spin" />

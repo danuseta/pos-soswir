@@ -61,7 +61,6 @@
         return;
       }
       
-      showAlertMessage('info', 'Memuat data produk dan kategori...');
       
       const productsResponse = await fetch(`${BACKEND_URL}/api/products?active_only=true`, {
         headers: getAuthHeaders()
@@ -89,7 +88,6 @@
         categories = [];
       }
       
-      showAlertMessage('success', `Berhasil memuat ${products.length} produk`);
       
     } catch (err) {
       console.error("Error loading data:", err);
@@ -319,7 +317,7 @@
                     <span class="text-white font-medium text-xs sm:text-sm xl:text-sm">Stok Habis</span>
                   </div>
                 {:else if product.stock <= 5}
-                  <div class="absolute top-2 right-2 bg-orange-500 text-white text-xs px-2 py-1 rounded">
+                  <div class="absolute top-2 right-2 bg-primary text-white text-xs px-2 py-1 rounded">
                     Stok: {product.stock}
                   </div>
                 {/if}
@@ -505,7 +503,7 @@
         <hr class="my-2 xl:my-2">
         <div class="flex justify-between items-center text-lg xl:text-lg font-semibold">
           <span>Total:</span>
-          <span class="text-green-600">{formatCurrency(cartTotal)}</span>
+          <span class="text-primary">{formatCurrency(cartTotal)}</span>
         </div>
       </div>
     </div>

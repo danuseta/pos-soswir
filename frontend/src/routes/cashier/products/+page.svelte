@@ -49,16 +49,6 @@
     return Package;
   }
 
-  function getCategoryColor(categoryName: string) {
-    if (categoryName.toLowerCase().includes('makanan')) {
-      return 'text-orange-600';
-    } else if (categoryName.toLowerCase().includes('minuman')) {
-      return 'text-primary';
-    } else if (categoryName.toLowerCase().includes('pubj')) {
-      return 'text-purple-600';
-    }
-    return 'text-muted-foreground';
-  }
 
   onMount(async () => {
     const token = typeof localStorage !== 'undefined' ? localStorage.getItem("pos_token") : null;
@@ -75,7 +65,6 @@
         return;
       }
       
-      showAlertMessage('info', 'Memuat data produk, kategori, dan supplier...');
       
       const [productsResponse, categoriesResponse, suppliersResponse] = await Promise.all([
         fetch(`${BACKEND_URL}/api/products`, { headers: getAuthHeaders() }),
@@ -110,7 +99,6 @@
           supplier: suppliers.find(s => s.id === product.supplier_id) || null
         }));
         console.log('Products loaded and processed:', products.length);
-        showAlertMessage('success', `${products.length} produk berhasil dimuat`);
       } else {
         const errorData = await productsResponse.json();
         throw new Error(errorData.message || "Gagal memuat data produk");
@@ -384,7 +372,7 @@
                       <span class="flex items-center justify-center">
                         <IconWrapper 
                           icon={getCategoryIcon(product.category.name)} 
-                          className="h-4 w-4 mr-1 {getCategoryColor(product.category.name)}" 
+                          className="h-4 w-4 mr-1 text-primary" 
                         />
                         {product.category.name}
                       </span>

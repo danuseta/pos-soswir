@@ -75,7 +75,6 @@
         return;
       }
       
-      showAlertMessage('info', 'Memuat data dashboard...');
       
       const response = await fetch(`${BACKEND_URL}/api/dashboard/cashier`, {
         headers: getAuthHeaders()
@@ -83,7 +82,6 @@
       
       if (response.ok) {
         dashboardData = await response.json();
-        showAlertMessage('success', 'Data dashboard berhasil dimuat');
       } else {
         const errorData = await response.json();
         throw new Error(errorData.message || "Gagal memuat data dashboard");
@@ -105,7 +103,7 @@
 
   {#if showAlert}
     <div class="fixed top-4 right-4 z-50 transition-all duration-300 {showAlert ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'}" style="min-width: 300px; max-width: 400px;">
-      <Alert variant={alertType === 'error' ? 'destructive' : 'default'} class="border-l-4 {alertType === 'success' ? 'border-l-green-500 bg-green-50 dark:bg-green-900/10 dark:border-green-600' : alertType === 'error' ? 'border-l-red-500 bg-red-50 dark:bg-red-900/10' : 'border-l-green-500 bg-green-50 dark:bg-green-900/10'}">
+      <Alert variant={alertType === 'error' ? 'destructive' : 'default'} class="border-l-4 {alertType === 'success' ? 'border-l-primary bg-primary/10' : alertType === 'error' ? 'border-l-red-500 bg-red-50 dark:bg-red-900/10' : 'border-l-primary bg-primary/10'}">
         <AlertTitle>{alertType === 'success' ? 'Berhasil!' : alertType === 'error' ? 'Error!' : 'Info'}</AlertTitle>
         <AlertDescription>{alertMessage}</AlertDescription>
       </Alert>
@@ -172,10 +170,10 @@
       <Card>
         <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle class="text-sm font-medium">Stok Rendah</CardTitle>
-          <IconWrapper icon={AlertTriangle} className="h-4 w-4 text-yellow-500" />
+          <IconWrapper icon={AlertTriangle} className="h-4 w-4 text-primary" />
         </CardHeader>
         <CardContent>
-          <div class="text-2xl font-bold text-yellow-600">{dashboardData.totals.lowStockProducts}</div>
+          <div class="text-2xl font-bold text-primary">{dashboardData.totals.lowStockProducts}</div>
           <p class="text-xs text-muted-foreground">perlu restok</p>
         </CardContent>
       </Card>
@@ -229,7 +227,7 @@
               {#each dashboardData.topProducts as product, index}
                 <div class="flex items-center justify-between">
                   <div class="flex items-center space-x-3">
-                    <div class="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-green-600 dark:text-green-300 text-sm font-medium">
+                    <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-sm font-medium">
                       {index + 1}
                     </div>
                     <div>
@@ -257,7 +255,7 @@
       <Card>
         <CardHeader>
           <CardTitle class="flex items-center gap-2">
-            <IconWrapper icon={AlertTriangle} className="h-5 w-5 text-yellow-500" />
+            <IconWrapper icon={AlertTriangle} className="h-5 w-5 text-primary" />
             Produk Stok Rendah
           </CardTitle>
           <CardDescription>Produk yang perlu segera direstok</CardDescription>
@@ -265,7 +263,7 @@
         <CardContent>
           <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
             {#each dashboardData.lowStockProducts as product}
-              <div class="flex items-center justify-between p-3 border rounded-lg {product.stock <= 5 ? 'border-red-200 bg-red-50 dark:bg-red-900/10' : 'border-yellow-200 bg-yellow-50 dark:bg-yellow-900/10'}">
+              <div class="flex items-center justify-between p-3 border rounded-lg {product.stock <= 5 ? 'border-red-200 bg-red-50 dark:bg-red-900/10' : 'border-border bg-muted'}">
                 <div>
                   <p class="font-medium">{product.name}</p>
                   <p class="text-sm text-muted-foreground">{formatCurrency(product.price)}</p>
@@ -285,7 +283,7 @@
     <Card>
       <CardHeader>
         <CardTitle class="flex items-center gap-2">
-          <IconWrapper icon={Truck} className="h-5 w-5 text-purple-600" />
+          <IconWrapper icon={Truck} className="h-5 w-5 text-primary" />
           Stok PUBJ
         </CardTitle>
         <CardDescription>Data stok produk PUBJ 30 hari terakhir</CardDescription>
@@ -317,8 +315,8 @@
                     </TableCell>
                     <TableCell>
                       <div class="flex items-center gap-2">
-                        <div class="w-8 h-8 bg-purple-100 dark:bg-purple-900/20 rounded flex items-center justify-center">
-                          <IconWrapper icon={Package} className="h-4 w-4 text-purple-600" />
+                        <div class="w-8 h-8 bg-primary/10 rounded flex items-center justify-center">
+                          <IconWrapper icon={Package} className="h-4 w-4 text-primary" />
                         </div>
                         <span class="font-medium">{stock.produk}</span>
                       </div>
@@ -328,7 +326,7 @@
                     </TableCell>
                     <TableCell class="text-center font-medium">{stock.stok_masuk}</TableCell>
                     <TableCell class="text-center">
-                      <span class="font-medium text-green-600">{stock.terjual}</span>
+                      <span class="font-medium">{stock.terjual}</span>
                     </TableCell>
                     <TableCell class="text-center">
                       <span class="font-medium text-red-600">{stock.sisa}</span>
