@@ -14,6 +14,8 @@
   import { BACKEND_URL, getAuthHeaders } from "$lib/apiConfig";
   import { browser } from '$app/environment';
   import IconWrapper from "$lib/components/IconWrapper.svelte";
+  import RowActions from "$lib/components/RowActions.svelte";
+  import RowActionItem from "$lib/components/RowActionItem.svelte";
   import Pagination from "$lib/components/Pagination.svelte";
   import AlertMessage from "$lib/components/AlertMessage.svelte";
   import { useAlert } from "$lib/composables/useAlert";
@@ -61,7 +63,6 @@
         return;
       }
       
-      showAlertMessage('info', 'Memuat data kategori...');
       
       const response = await fetch(`${BACKEND_URL}/api/categories`, {
         headers: getAuthHeaders()
@@ -69,7 +70,6 @@
       
       if (response.ok) {
         categories = await response.json();
-        showAlertMessage('success', `Berhasil memuat ${categories.length} kategori`);
       } else {
         const errorData = await response.json();
         throw new Error(errorData.message || "Gagal memuat data kategori");
@@ -358,13 +358,13 @@
                   <TableCell class="w-[200px] text-center">
                     <div class="flex items-center gap-2 justify-center">
                       {#if category.name.toLowerCase() === 'makanan'}
-                        <IconWrapper icon={UtensilsCrossed} className="h-5 w-5 text-orange-600" />
+                        <IconWrapper icon={UtensilsCrossed} className="h-5 w-5 text-primary" />
                       {:else if category.name.toLowerCase() === 'minuman'}
                         <IconWrapper icon={Coffee} className="h-5 w-5 text-primary" />
                       {:else if category.name.toLowerCase() === 'pubj'}
-                        <IconWrapper icon={Truck} className="h-5 w-5 text-purple-600" />
+                        <IconWrapper icon={Truck} className="h-5 w-5 text-primary" />
                       {:else}
-                        <IconWrapper icon={category.is_reseller ? Users : Store} className="h-5 w-5 {category.is_reseller ? 'text-orange-600' : 'text-primary'}" />
+                        <IconWrapper icon={category.is_reseller ? Users : Store} className="h-5 w-5 {category.is_reseller ? 'text-primary' : 'text-primary'}" />
                       {/if}
                       <span class="font-medium truncate">{category.name}</span>
                     </div>
@@ -376,19 +376,15 @@
                   </TableCell>
                   <TableCell class="text-center">
                     <div class="flex items-center justify-center gap-1">
-                      <IconWrapper icon={Package} className="h-4 w-4 text-success" />
+                      <IconWrapper icon={Package} className="h-4 w-4 text-primary" />
                       <span class="font-medium">{category.product_count || 0}</span>
                     </div>
                   </TableCell>
                   <TableCell class="text-center">
-                    <div class="flex justify-center space-x-1">
-                      <Button variant="outline" size="sm" on:click={() => openEditDialog(category)} title="Edit">
-                        <IconWrapper icon={Edit} className="h-4 w-4" />
-                      </Button>
-                      <Button variant="destructive" size="sm" on:click={() => handleDeleteCategory(category.id)} title="Hapus">
-                        <IconWrapper icon={Trash2} className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    <RowActions>
+                      <RowActionItem icon={Edit} label="Edit" on:click={() => openEditDialog(category)} />
+                      <RowActionItem icon={Trash2} label="Hapus" danger on:click={() => handleDeleteCategory(category.id)} />
+                    </RowActions>
                   </TableCell>
                 </TableRow>
               {/each}
@@ -451,11 +447,11 @@
         </div>
         
         {#if currentCategory.is_reseller}
-          <div class="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg">
-            <p class="text-sm text-orange-700 dark:text-orange-300 mb-2">
+          <div class="bg-muted p-4 rounded-lg">
+            <p class="text-sm text-foreground mb-2">
               <strong>Info PUBJ:</strong> Pajak akan ditentukan per produk saat menambah/edit produk dalam kategori ini.
             </p>
-            <p class="text-xs text-orange-600 dark:text-orange-400">
+            <p class="text-xs text-primary">
               Contoh: Risol 10%, Tahu Isi 15%, Martabak 12%
             </p>
           </div>

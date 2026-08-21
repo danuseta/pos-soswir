@@ -13,6 +13,8 @@
   import { BACKEND_URL, getAuthHeaders } from "$lib/apiConfig";
   import { browser } from '$app/environment';
   import IconWrapper from "$lib/components/IconWrapper.svelte";
+  import RowActions from "$lib/components/RowActions.svelte";
+  import RowActionItem from "$lib/components/RowActionItem.svelte";
   import Pagination from "$lib/components/Pagination.svelte";
   import AlertMessage from "$lib/components/AlertMessage.svelte";
   import { useAlert } from "$lib/composables/useAlert";
@@ -71,7 +73,6 @@
 
   async function loadSuppliers() {
     try {
-      showAlertMessage('info', 'Memuat data supplier...');
       
       const response = await fetch(`${BACKEND_URL}/api/suppliers`, {
         headers: getAuthHeaders()
@@ -79,7 +80,6 @@
       
       if (response.ok) {
         suppliers = await response.json();
-        showAlertMessage('success', `Berhasil memuat ${suppliers.length} supplier`);
       } else {
         const errorData = await response.json();
         throw new Error(errorData.message || "Gagal memuat data supplier");
@@ -404,7 +404,7 @@
                   <TableCell class="text-center">
                     {#if supplier.phone}
                       <div class="flex items-center gap-2 justify-center">
-                        <IconWrapper icon={Phone} className="h-4 w-4 text-success" />
+                        <IconWrapper icon={Phone} className="h-4 w-4 text-primary" />
                         <span>{supplier.phone}</span>
                       </div>
                     {:else}
@@ -413,7 +413,7 @@
                   </TableCell>
                   <TableCell class="text-center">
                     <div class="flex items-center justify-center gap-1">
-                      <IconWrapper icon={Package} className="h-4 w-4 text-orange-600" />
+                      <IconWrapper icon={Package} className="h-4 w-4 text-primary" />
                       <span class="font-medium">{supplier.product_count || 0}</span>
                     </div>
                   </TableCell>
@@ -426,23 +426,11 @@
                     </Badge>
                   </TableCell>
                   <TableCell class="text-center">
-                    <div class="flex justify-center space-x-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        on:click={() => openSupplierHistory(supplier)} 
-                        title="Lihat Riwayat"
-                        class=""
-                      >
-                        <IconWrapper icon={Eye} className="h-4 w-4" />
-                      </Button>
-                      <Button variant="outline" size="sm" on:click={() => openEditDialog(supplier)} title="Edit">
-                        <IconWrapper icon={Edit} className="h-4 w-4" />
-                      </Button>
-                      <Button variant="destructive" size="sm" on:click={() => handleDeleteSupplier(supplier.id)} title="Hapus">
-                        <IconWrapper icon={Trash2} className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    <RowActions>
+                      <RowActionItem icon={Eye} label="Lihat Riwayat" on:click={() => openSupplierHistory(supplier)} />
+                      <RowActionItem icon={Edit} label="Edit" on:click={() => openEditDialog(supplier)} />
+                      <RowActionItem icon={Trash2} label="Hapus" danger on:click={() => handleDeleteSupplier(supplier.id)} />
+                    </RowActions>
                   </TableCell>
                 </TableRow>
               {/each}
@@ -563,25 +551,25 @@
               </div>
             </div>
             
-            <div class="bg-success/10 border border-success/20 rounded-lg p-4">
-              <h4 class="font-medium text-success mb-2 flex items-center gap-2">
+            <div class="bg-primary/10 border border-primary/20 rounded-lg p-4">
+              <h4 class="font-medium text-primary mb-2 flex items-center gap-2">
                 <IconWrapper icon={DollarSign} className="h-4 w-4" />
                 Estimasi Total Pendapatan Supplier
               </h4>
-              <div class="text-sm text-success">
+              <div class="text-sm text-primary">
                 <p>Jika semua produk terjual habis: <strong>{formatCurrency(calculateSupplierEstimatedRevenue())}</strong></p>
-                <p class="text-xs mt-1 text-success">*Berdasarkan harga jual dikurangi fee toko</p>
+                <p class="text-xs mt-1 text-primary">*Berdasarkan harga jual dikurangi fee toko</p>
               </div>
             </div>
             
-            <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
-              <h4 class="font-medium text-yellow-900 dark:text-yellow-100 mb-2 flex items-center gap-2">
+            <div class="bg-muted border border-border rounded-lg p-4">
+              <h4 class="font-medium text-foreground mb-2 flex items-center gap-2">
                 <IconWrapper icon={TrendingUp} className="h-4 w-4" />
                 Estimasi Fee Toko
               </h4>
-              <div class="text-sm text-yellow-800 dark:text-yellow-200">
+              <div class="text-sm text-foreground">
                 <p>Jika semua produk terjual habis: <strong>{formatCurrency(calculateStoreEstimatedFee())}</strong></p>
-                <p class="text-xs mt-1 text-yellow-600 dark:text-yellow-400">*Total fee yang akan diterima toko</p>
+                <p class="text-xs mt-1 text-primary">*Total fee yang akan diterima toko</p>
               </div>
             </div>
           </div>
@@ -618,10 +606,10 @@
                     </TableCell>
                     <TableCell class="text-center font-medium">{history.quantity_in}</TableCell>
                     <TableCell class="text-center">
-                                              <span class="font-medium text-success">{history.quantity_sold}</span>
+                                              <span class="font-medium text-primary">{history.quantity_sold}</span>
                     </TableCell>
                     <TableCell class="text-center">
-                      <span class="font-medium text-orange-600">{history.quantity_returned}</span>
+                      <span class="font-medium text-primary">{history.quantity_returned}</span>
                     </TableCell>
                     <TableCell class="text-right font-mono">
                       {formatCurrency(history.supplier_earning || 0)}

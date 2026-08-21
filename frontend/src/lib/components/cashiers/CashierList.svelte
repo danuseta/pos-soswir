@@ -11,6 +11,8 @@
   import { BACKEND_URL, getAuthHeaders } from "$lib/apiConfig";
   import { browser } from '$app/environment';
   import IconWrapper from "$lib/components/IconWrapper.svelte";
+  import RowActions from "$lib/components/RowActions.svelte";
+  import RowActionItem from "$lib/components/RowActionItem.svelte";
   import AlertMessage from "$lib/components/AlertMessage.svelte";
   import { useAlert } from "$lib/composables/useAlert";
 
@@ -630,13 +632,11 @@
                             {jam(g.shift.start_time)} - {jam(g.shift.end_time)} setiap hari
                           </span>
                           <span class="text-xs text-muted-foreground">{g.cashiers.length} kasir</span>
-                          <div class="ml-auto flex gap-1">
-                            <Button variant="outline" size="sm" on:click={() => bukaEditSesi(g.shift)} title="Edit sesi">
-                              <IconWrapper icon={Edit} className="h-4 w-4" />
-                            </Button>
-                            <Button variant="destructive" size="sm" on:click={() => hapusSesi(g.shift)} title="Hapus sesi">
-                              <IconWrapper icon={Trash2} className="h-4 w-4" />
-                            </Button>
+                          <div class="ml-auto">
+                            <RowActions>
+                              <RowActionItem icon={Edit} label="Edit sesi" on:click={() => bukaEditSesi(g.shift)} />
+                              <RowActionItem icon={Trash2} label="Hapus sesi" danger on:click={() => hapusSesi(g.shift)} />
+                            </RowActions>
                           </div>
                         {:else}
                           <span class="font-semibold text-sm">Belum ada sesi</span>
@@ -711,23 +711,11 @@
                     </select>
                   </TableCell>
                   <TableCell class="text-center">
-                    <div class="flex justify-center space-x-1">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        on:click={() => openActivityModal(cashier)} 
-                        title="Lihat Aktivitas"
-                        class=""
-                      >
-                        <IconWrapper icon={Eye} className="h-4 w-4" />
-                      </Button>
-                      <Button variant="outline" size="sm" on:click={() => openEditDialog(cashier)} title="Edit">
-                        <IconWrapper icon={Edit} className="h-4 w-4" />
-                      </Button>
-                      <Button variant="destructive" size="sm" on:click={() => handleDeleteCashier(cashier.id)} title="Hapus">
-                        <IconWrapper icon={Trash2} className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    <RowActions>
+                      <RowActionItem icon={Eye} label="Lihat Aktivitas" on:click={() => openActivityModal(cashier)} />
+                      <RowActionItem icon={Edit} label="Edit" on:click={() => openEditDialog(cashier)} />
+                      <RowActionItem icon={Trash2} label="Hapus" danger on:click={() => handleDeleteCashier(cashier.id)} />
+                    </RowActions>
                   </TableCell>
                 </TableRow>
                 {/each}

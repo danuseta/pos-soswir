@@ -13,6 +13,8 @@
   import { BACKEND_URL, getAuthHeaders } from "$lib/apiConfig";
   import { browser } from '$app/environment';
   import IconWrapper from "$lib/components/IconWrapper.svelte";
+  import RowActions from "$lib/components/RowActions.svelte";
+  import RowActionItem from "$lib/components/RowActionItem.svelte";
   import Pagination from "$lib/components/Pagination.svelte";
   import AlertMessage from "$lib/components/AlertMessage.svelte";
   import { useAlert } from "$lib/composables/useAlert";
@@ -141,7 +143,6 @@
         return;
       }
       
-      showAlertMessage('info', 'Memuat data produk, kategori, dan supplier...');
       
       const [productsResponse, categoriesResponse, suppliersResponse] = await Promise.all([
         fetch(`${BACKEND_URL}/api/products`, { headers: getAuthHeaders() }),
@@ -181,7 +182,6 @@
         throw new Error(errorData.message || "Gagal memuat data produk");
       }
       
-      showAlertMessage('success', `Berhasil memuat ${products.length} produk, ${categories.length} kategori, dan ${suppliers.length} supplier`);
       isLoading = false;
       
     } catch (err) {
@@ -704,11 +704,11 @@
                     {#if product.category}
                       <div class="flex items-center gap-2 justify-center">
                         {#if product.category.name.toLowerCase() === 'makanan'}
-                          <IconWrapper icon={UtensilsCrossed} className="h-4 w-4 text-orange-600" />
+                          <IconWrapper icon={UtensilsCrossed} className="h-4 w-4 text-primary" />
                         {:else if product.category.name.toLowerCase() === 'minuman'}
                           <IconWrapper icon={Coffee} className="h-4 w-4 text-primary" />
                         {:else if product.category.name.toLowerCase() === 'pubj'}
-                          <IconWrapper icon={Truck} className="h-4 w-4 text-purple-600" />
+                          <IconWrapper icon={Truck} className="h-4 w-4 text-primary" />
                         {:else}
                           <IconWrapper icon={Package} className="h-4 w-4 text-muted-foreground" />
                         {/if}
@@ -737,20 +737,20 @@
                   </TableCell>
                   <TableCell class="text-center">
                     <div class="flex flex-col items-center gap-1">
-                      <span class="font-medium text-sm {product.stock <= 0 ? 'text-destructive' : product.stock <= 10 ? 'text-orange-600' : 'text-success'}">
+                      <span class="font-medium text-sm {product.stock <= 0 ? 'text-destructive' : product.stock <= 10 ? 'text-primary' : 'text-primary'}">
                         {product.stock}
                       </span>
                       {#if product.stock <= 0}
                         <Badge variant="destructive" class="text-xs">Habis</Badge>
                       {:else if product.stock <= 10}
-                        <Badge variant="outline" class="text-xs text-orange-600 border-orange-300">Rendah</Badge>
+                        <Badge variant="outline" class="text-xs text-primary border-border">Rendah</Badge>
                       {/if}
                     </div>
                   </TableCell>
                   <TableCell class="text-center">
                     {#if product.tax_percentage > 0}
                       <div class="flex flex-col items-center gap-1">
-                        <Badge variant="outline" class="text-orange-600 border-orange-300 text-xs">
+                        <Badge variant="outline" class="text-primary border-border text-xs">
                           <IconWrapper icon={Percent} className="mr-1 h-3 w-3" />
                           {product.tax_percentage}%
                         </Badge>
@@ -763,32 +763,21 @@
                     {/if}
                   </TableCell>
                   <TableCell class="text-center">
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {product.is_active ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {product.is_active ? 'bg-primary/10 text-primary' : 'bg-destructive/10 text-destructive'}">
                       {product.is_active ? 'Aktif' : 'Nonaktif'}
                     </span>
                   </TableCell>
                   <TableCell class="text-center">
-                    <div class="flex justify-center space-x-1">
-                      <Button variant="outline" size="sm" on:click={() => openEditDialog(product)} title="Edit">
-                        <IconWrapper icon={Edit} className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        variant={product.is_active ? "destructive" : "default"} 
-                        size="sm" 
-                        on:click={() => toggleActiveProduct(product.id, product.is_active)} 
-                        title={product.is_active ? "Nonaktifkan" : "Aktifkan"}
-                      >
-                        <IconWrapper icon={product.is_active ? PowerOff : Power} className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        variant="destructive" 
-                        size="sm" 
-                        on:click={() => openHardDeleteDialog(product)} 
-                        title="Hapus Permanen (Password Required)"
-                      >
-                        <IconWrapper icon={Trash2} className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    <RowActions>
+                      <RowActionItem icon={Edit} label="Edit" on:click={() => openEditDialog(product)} />
+                      <RowActionItem
+                        icon={product.is_active ? PowerOff : Power}
+                        label={product.is_active ? "Nonaktifkan" : "Aktifkan"}
+                        danger={product.is_active}
+                        on:click={() => toggleActiveProduct(product.id, product.is_active)}
+                      />
+                      <RowActionItem icon={Trash2} label="Hapus permanen" danger on:click={() => openHardDeleteDialog(product)} />
+                    </RowActions>
                   </TableCell>
                 </TableRow>
               {/each}
@@ -874,7 +863,7 @@
                 <Label for="stock" class="text-sm font-medium flex items-center gap-2">
                   Stok {isResellerCategory ? '(PUBJ)' : ''} *
                   {#if isResellerCategory}
-                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400">
+                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-muted text-foreground">
                       Auto dari Stok Harian
                     </span>
                   {/if}
@@ -889,7 +878,7 @@
                   disabled={isResellerCategory}
                 />
                 {#if isResellerCategory}
-                  <p class="text-xs text-orange-600 dark:text-orange-400 mt-1">
+                  <p class="text-xs text-primary mt-1">
                     ⚠️ Stok PUBJ dikelola otomatis melalui <strong>Stok Harian PUBJ</strong>
                   </p>
                 {/if}
@@ -909,19 +898,19 @@
         </div>
 
         {#if isResellerCategory}
-          <div class="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg border border-orange-200 dark:border-orange-800">
+          <div class="bg-muted p-4 rounded-lg border border-border">
             <div class="flex items-center gap-2 mb-4">
-              <IconWrapper icon={Users} className="h-5 w-5 text-orange-600" />
-              <h4 class="font-medium text-orange-700 dark:text-orange-300">Pengaturan PUBJ (Penitipan)</h4>
+              <IconWrapper icon={Users} className="h-5 w-5 text-primary" />
+              <h4 class="font-medium text-foreground">Pengaturan PUBJ (Penitipan)</h4>
             </div>
             
             <div class="space-y-4">
               <div>
-                <Label for="supplier" class="text-sm font-medium text-orange-700 dark:text-orange-300">Supplier *</Label>
+                <Label for="supplier" class="text-sm font-medium text-foreground">Supplier *</Label>
                 <select 
                   id="supplier" 
                   bind:value={currentProduct.supplier_id} 
-                  class="mt-1 h-10 w-full rounded-md border border-orange-300 bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  class="mt-1 h-10 w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 >
                   <option value={null} disabled>Pilih supplier...</option>
                   {#each suppliers as supplier (supplier.id)}
@@ -930,14 +919,14 @@
                     </option>
                   {/each}
                 </select>
-                <p class="text-xs text-orange-600 dark:text-orange-400 mt-1">
+                <p class="text-xs text-primary mt-1">
                   Pilih supplier/pemilik barang yang dititipkan
                 </p>
               </div>
               
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <Label for="tax_percentage" class="text-sm font-medium text-orange-700 dark:text-orange-300">Persentase Fee Toko (%) *</Label>
+                  <Label for="tax_percentage" class="text-sm font-medium text-foreground">Persentase Fee Toko (%) *</Label>
                   <Input 
                     id="tax_percentage" 
                     type="number" 
@@ -946,33 +935,33 @@
                     step="0.01"
                     bind:value={currentProduct.tax_percentage}
                     placeholder="10.00" 
-                    class="mt-1 border-orange-300 focus:border-orange-500 focus:ring-orange-500"
+                    class="mt-1 border-border focus:border-primary focus:ring-ring"
                   />
-                  <p class="text-xs text-orange-600 dark:text-orange-400 mt-1">
+                  <p class="text-xs text-primary mt-1">
                     Fee yang diambil toko (1-100%)
                   </p>
                 </div>
                 
                 <div>
-                  <Label for="tax_description" class="text-sm font-medium text-orange-700 dark:text-orange-300">Keterangan Fee</Label>
+                  <Label for="tax_description" class="text-sm font-medium text-foreground">Keterangan Fee</Label>
                   <Input 
                     id="tax_description" 
                     bind:value={currentProduct.tax_description} 
                     placeholder="Contoh: Fee toko 10%"
-                    class="mt-1 border-orange-300 focus:border-orange-500 focus:ring-orange-500" 
+                    class="mt-1 border-border focus:border-primary focus:ring-ring" 
                   />
                 </div>
               </div>
               
               {#if currentProduct.price > 0 && currentProduct.tax_percentage > 0}
-                <div class="bg-orange-100 dark:bg-orange-900/40 p-3 rounded text-sm">
+                <div class="bg-muted p-3 rounded text-sm">
                   <div class="font-medium mb-2">Simulasi Bagi Hasil:</div>
                   <div class="space-y-1 text-xs">
                     <div class="flex justify-between">
                       <span>Harga Jual:</span>
                       <span class="font-medium">{formatCurrency(currentProduct.price)}</span>
                     </div>
-                    <div class="flex justify-between text-success">
+                    <div class="flex justify-between text-primary">
                       <span>Fee Toko ({currentProduct.tax_percentage}%):</span>
                       <span class="font-medium">{formatCurrency(currentProduct.price * (currentProduct.tax_percentage / 100))}</span>
                     </div>
@@ -980,8 +969,8 @@
                       <span>Untuk Supplier:</span>
                       <span class="font-medium">{formatCurrency(currentProduct.price - (currentProduct.price * (currentProduct.tax_percentage / 100)))}</span>
                     </div>
-                    <hr class="my-2 border-orange-200">
-                    <div class="text-xs text-orange-600 dark:text-orange-400">
+                    <hr class="my-2 border-border">
+                    <div class="text-xs text-primary">
                       <p class="mb-1"><strong>Contoh:</strong> Jika terjual 1 unit:</p>
                       <p>• Total penjualan: {formatCurrency(currentProduct.price)}</p>
                       <p>• Toko mendapat: {formatCurrency(currentProduct.price * (currentProduct.tax_percentage / 100))} (sebagai fee)</p>
@@ -1075,8 +1064,8 @@
               <p class="text-sm text-muted-foreground mt-1">ID: {deleteTargetProduct.id}</p>
             </div>
 
-            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-              <p class="text-yellow-800 text-sm">
+            <div class="bg-muted border border-border rounded-lg p-3">
+              <p class="text-foreground text-sm">
                 <strong>Catatan:</strong> Riwayat transaksi akan tetap tersimpan untuk keperluan audit,
                 tetapi data produk akan dihapus dari sistem.
               </p>
@@ -1146,17 +1135,17 @@
   <Dialog open={showToggleActiveDialog} onOpenChange={(open) => { if (!open) showToggleActiveDialog = false; }}>
     <DialogContent class="w-full max-w-md">
       <DialogHeader>
-        <DialogTitle class="flex items-center gap-2 text-orange-600">
+        <DialogTitle class="flex items-center gap-2 text-primary">
           <IconWrapper icon={AlertTriangle} className="h-5 w-5" />
           Konfirmasi Perubahan Status
         </DialogTitle>
         <DialogDescription class="text-left">
           <div class="space-y-3">
-            <div class="bg-orange-50 border border-orange-200 rounded-lg p-3">
-              <p class="text-orange-800 font-medium mb-2">
+            <div class="bg-muted border border-border rounded-lg p-3">
+              <p class="text-foreground font-medium mb-2">
                 {toggleTargetProduct.is_active ? 'Nonaktifkan produk ini?' : 'Aktifkan produk ini?'}
               </p>
-              <p class="text-orange-700 text-sm">
+              <p class="text-foreground text-sm">
                 {toggleTargetProduct.is_active 
                   ? 'Produk tidak akan muncul di kasir' 
                   : 'Produk akan muncul kembali di kasir'}
