@@ -44,7 +44,6 @@
         return;
       }
       
-      showAlertMessage('info', 'Memuat data transaksi...');
       
       const response = await fetch(`${BACKEND_URL}/api/transactions`, {
         headers: getAuthHeaders()
@@ -53,7 +52,6 @@
       if (response.ok) {
         transactions = await response.json();
         console.log('Transaction data loaded:', transactions[0]);
-        showAlertMessage('success', `Berhasil memuat ${transactions.length} data transaksi`);
         isLoading = false;
       } else {
         const errorData = await response.json();
@@ -503,11 +501,11 @@
                   <TableCell class="w-[120px] text-center">
                     <div class="flex items-center gap-2 justify-center">
                       {#if transaction.kategori.toLowerCase() === 'makanan'}
-                        <IconWrapper icon={UtensilsCrossed} className="h-4 w-4 text-orange-600" />
+                        <IconWrapper icon={UtensilsCrossed} className="h-4 w-4 text-primary" />
                       {:else if transaction.kategori.toLowerCase() === 'minuman'}
                         <IconWrapper icon={Coffee} className="h-4 w-4 text-primary" />
                       {:else if transaction.kategori.toLowerCase() === 'pubj'}
-                        <IconWrapper icon={Truck} className="h-4 w-4 text-purple-600" />
+                        <IconWrapper icon={Truck} className="h-4 w-4 text-primary" />
                       {:else}
                                                   <IconWrapper icon={Package} className="h-4 w-4 text-muted-foreground" />
                         {/if}
@@ -521,8 +519,8 @@
                   <TableCell class="w-[110px] text-center font-mono text-sm font-semibold">{formatCurrency(transaction.total)}</TableCell>
                   <TableCell class="w-[100px] text-center">
                     <div class="flex items-center justify-center gap-1">
-                      <div class="w-6 h-6 bg-success/20 rounded-full flex items-center justify-center">
-                        <IconWrapper icon={User} className="h-3 w-3 text-success" />
+                      <div class="w-6 h-6 bg-primary/20 rounded-full flex items-center justify-center">
+                        <IconWrapper icon={User} className="h-3 w-3 text-primary" />
                       </div>
                       <span class="text-sm font-medium truncate" title={transaction.kasir}>{transaction.kasir}</span>
                     </div>

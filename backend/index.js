@@ -28,6 +28,7 @@ const { createProductTable } = require("./models/product");
 const { createSalesTables } = require("./models/sale");
 const { createStoreSettingsTable } = require("./models/settings");
 const { createActivityLogTable } = require("./models/activity");
+const { createShiftTables } = require("./models/shift");
 
 const activityCleanup = require("./utils/activityCleanup");
 const { authenticateToken, authorizeRole } = require("./middleware/authMiddleware");
@@ -44,6 +45,7 @@ const transactionsRoutes = require("./routes/transactions");
 const suppliersRoutes = require("./routes/suppliers");
 const dailyStockRoutes = require("./routes/dailyStock");
 const activityCleanupRoutes = require("./routes/activity-cleanup");
+const shiftsRoutes = require("./routes/shifts");
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -211,7 +213,9 @@ const initializeDatabase = async () => {
       createStoreSettingsTable(),
       createActivityLogTable()
     ]);
-    
+
+    await createShiftTables();
+
     console.log("✅ All database tables initialized");
     
     if (isProduction || isStaging) {
@@ -255,6 +259,7 @@ app.use("/api/transactions", transactionsRoutes);
 app.use("/api/suppliers", suppliersRoutes);
 app.use("/api/daily-stock", dailyStockRoutes);
 app.use("/api/activity-cleanup", activityCleanupRoutes);
+app.use("/api/shifts", shiftsRoutes);
 
 app.use('*', (req, res) => {
   res.status(404).json({

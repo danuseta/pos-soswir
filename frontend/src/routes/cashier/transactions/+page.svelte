@@ -38,16 +38,6 @@
     return Package;
   }
 
-  function getCategoryColor(categoryName: string) {
-    if (categoryName.toLowerCase().includes('makanan')) {
-      return 'text-orange-600';
-    } else if (categoryName.toLowerCase().includes('minuman')) {
-      return 'text-primary';
-    } else if (categoryName.toLowerCase().includes('pubj')) {
-      return 'text-purple-600';
-    }
-    return 'text-muted-foreground';
-  }
 
   onMount(async () => {
     const token = typeof localStorage !== 'undefined' ? localStorage.getItem("pos_token") : null;
@@ -64,7 +54,6 @@
         return;
       }
       
-      showAlertMessage('info', 'Memuat data transaksi...');
       
       const response = await fetch(`${BACKEND_URL}/api/transactions/cashier`, {
         headers: getAuthHeaders()
@@ -73,7 +62,6 @@
       if (response.ok) {
         transactions = await response.json();
         console.log('Transaction data loaded:', transactions[0]);
-        showAlertMessage('success', `Berhasil memuat ${transactions.length} data transaksi`);
         isLoading = false;
       } else {
         const errorData = await response.json();
@@ -420,11 +408,11 @@
                   <TableCell class="w-[120px] text-center">
                     <div class="flex items-center gap-2 justify-center">
                       {#if transaction.kategori.toLowerCase() === 'makanan'}
-                        <IconWrapper icon={UtensilsCrossed} className="h-4 w-4 text-orange-600" />
+                        <IconWrapper icon={UtensilsCrossed} className="h-4 w-4 text-primary" />
                       {:else if transaction.kategori.toLowerCase() === 'minuman'}
                         <IconWrapper icon={Coffee} className="h-4 w-4 text-primary" />
                       {:else if transaction.kategori.toLowerCase() === 'pubj'}
-                        <IconWrapper icon={Truck} className="h-4 w-4 text-purple-600" />
+                        <IconWrapper icon={Truck} className="h-4 w-4 text-primary" />
                       {:else}
                         <IconWrapper icon={Package} className="h-4 w-4 text-muted-foreground" />
                       {/if}

@@ -13,6 +13,8 @@
   import { BACKEND_URL, getAuthHeaders } from "$lib/apiConfig";
   import { browser } from '$app/environment';
   import IconWrapper from "$lib/components/IconWrapper.svelte";
+  import RowActions from "$lib/components/RowActions.svelte";
+  import RowActionItem from "$lib/components/RowActionItem.svelte";
   import Pagination from "$lib/components/Pagination.svelte";
   import AlertMessage from "$lib/components/AlertMessage.svelte";
   import { useAlert } from "$lib/composables/useAlert";
@@ -176,7 +178,9 @@
 
       if (response.ok) {
         const result = await response.json();
-        showAlertMessage('info', `Auto-completion: ${result.completed_count} entry diselesaikan otomatis pada pukul 18:00`);
+        if (result.completed_count > 0) {
+          showAlertMessage('info', `Auto-completion: ${result.completed_count} entry diselesaikan otomatis pada pukul 18:00`);
+        }
         await loadDailyEntries();
       }
     } catch (err) {
@@ -618,7 +622,7 @@
         <Button 
           variant="outline" 
           on:click={openGlobalCompletionDialog} 
-          class="w-full sm:w-auto text-success border-success/20"
+          class="w-full sm:w-auto text-primary border-primary/20"
         >
           <IconWrapper icon={Calendar} className="mr-2 h-4 w-4" />
           <span class="whitespace-nowrap">Selesaikan Hari</span>
@@ -809,7 +813,7 @@
                   </TableCell>
                   <TableCell class="w-[140px] text-center">
                     <div class="flex items-center gap-1 justify-center">
-                      <IconWrapper icon={Users} className="h-4 w-4 text-success" />
+                      <IconWrapper icon={Users} className="h-4 w-4 text-primary" />
                       <div class="min-w-0">
                         <div class="font-medium truncate text-sm">{entry.supplier_name}</div>
                         {#if entry.supplier_phone}
@@ -820,10 +824,10 @@
                   </TableCell>
                   <TableCell class="text-center font-medium">{entry.quantity_in}</TableCell>
                   <TableCell class="text-center">
-                                            <span class="font-medium text-success">{entry.quantity_sold}</span>
+                                            <span class="font-medium text-primary">{entry.quantity_sold}</span>
                   </TableCell>
                   <TableCell class="text-center">
-                    <span class="font-medium text-orange-600">{entry.quantity_returned}</span>
+                    <span class="font-medium text-primary">{entry.quantity_returned}</span>
                   </TableCell>
                   <TableCell class="text-center font-mono text-sm">{formatCurrency(entry.product_price || entry.price_per_unit)}</TableCell>
                   <TableCell class="text-center">
@@ -848,23 +852,17 @@
                     </div>
                   </TableCell>
                   <TableCell class="text-center">
-                    <div class="flex justify-center gap-1">
+                    <RowActions>
                       {#if entry.status === 'active'}
-                        <Button variant="outline" size="sm" on:click={() => openEditDialog(entry)} title="Edit">
-                          <IconWrapper icon={Edit} className="h-4 w-4" />
-                        </Button>
+                        <RowActionItem icon={Edit} label="Edit" on:click={() => openEditDialog(entry)} />
                         {#if userRole === 'superadmin'}
-                          <Button variant="default" size="sm" on:click={() => openCompletionDialog(entry)} title="Selesaikan">
-                            <IconWrapper icon={Calendar} className="h-4 w-4" />
-                          </Button>
+                          <RowActionItem icon={Calendar} label="Selesaikan" on:click={() => openCompletionDialog(entry)} />
                         {/if}
                       {/if}
                       {#if entry.status === 'completed' && !entry.is_paid && userRole === 'superadmin'}
-                        <Button variant="default" size="sm" on:click={() => openMarkPaidDialog(entry)} title="Tandai Dibayar">
-                          <IconWrapper icon={DollarSign} className="h-4 w-4" />
-                        </Button>
+                        <RowActionItem icon={DollarSign} label="Tandai Dibayar" on:click={() => openMarkPaidDialog(entry)} />
                       {/if}
-                    </div>
+                    </RowActions>
                   </TableCell>
                 </TableRow>
               {/each}
@@ -990,14 +988,14 @@
   <Dialog open={showCompletionDialog} onOpenChange={(open) => { if (!open) showCompletionDialog = false; }}>
     <DialogContent class="w-full max-w-md">
       <DialogHeader>
-        <DialogTitle class="flex items-center gap-2 text-success">
+        <DialogTitle class="flex items-center gap-2 text-primary">
           <IconWrapper icon={CheckCircle2} className="h-5 w-5" />
           Selesaikan Stok Harian
         </DialogTitle>
         <DialogDescription class="text-left">
           <div class="space-y-3">
-            <div class="bg-success/10 border border-success/20 rounded-lg p-3">
-              <p class="text-success text-sm">
+            <div class="bg-primary/10 border border-primary/20 rounded-lg p-3">
+              <p class="text-primary text-sm">
                 <strong>Selesaikan Entry:</strong> Entry stok untuk produk "{completionEntry.product_name}" akan diselesaikan dan sisa stok dikembalikan ke supplier.
               </p>
             </div>
@@ -1014,8 +1012,8 @@
               </div>
             </div>
 
-            <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
-              <p class="text-yellow-800 dark:text-yellow-200 text-sm">
+            <div class="bg-muted border border-border rounded-lg p-3">
+              <p class="text-foreground text-sm">
                 <strong>Perhatian:</strong> Setelah menyelesaikan hari ini, Anda tidak dapat menambah atau mengubah entry untuk tanggal hari ini.
               </p>
             </div>
@@ -1048,14 +1046,14 @@
   <Dialog open={showGlobalCompletionDialog} onOpenChange={(open) => { if (!open) showGlobalCompletionDialog = false; }}>
     <DialogContent class="w-full max-w-md">
       <DialogHeader>
-        <DialogTitle class="flex items-center gap-2 text-success">
+        <DialogTitle class="flex items-center gap-2 text-primary">
           <IconWrapper icon={CheckCircle2} className="h-5 w-5" />
           Selesaikan Semua Stok Harian
         </DialogTitle>
         <DialogDescription class="text-left">
           <div class="space-y-3">
-            <div class="bg-success/10 border border-success/20 rounded-lg p-3">
-              <p class="text-success text-sm">
+            <div class="bg-primary/10 border border-primary/20 rounded-lg p-3">
+              <p class="text-primary text-sm">
                 <strong>Hari selesai!</strong> Semua entry stok harian telah diselesaikan dan status diperbarui.
               </p>
             </div>
@@ -1070,8 +1068,8 @@
               </div>
             </div>
             
-            <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
-              <p class="text-yellow-800 dark:text-yellow-200 text-sm">
+            <div class="bg-muted border border-border rounded-lg p-3">
+              <p class="text-foreground text-sm">
                 <strong>Perhatian:</strong> Setelah menyelesaikan hari ini, Anda tidak dapat menambah atau mengubah entry untuk tanggal hari ini.
               </p>
             </div>
@@ -1104,14 +1102,14 @@
   <Dialog open={showMarkPaidDialog} onOpenChange={(open) => { if (!open) showMarkPaidDialog = false; }}>
     <DialogContent class="w-full max-w-md">
       <DialogHeader>
-        <DialogTitle class="flex items-center gap-2 text-success">
+        <DialogTitle class="flex items-center gap-2 text-primary">
           <IconWrapper icon={DollarSign} className="h-5 w-5" />
           Konfirmasi Pembayaran
         </DialogTitle>
         <DialogDescription class="text-left">
           <div class="space-y-3">
-            <div class="bg-success/10 border border-success/20 rounded-lg p-3">
-              <p class="text-success text-sm">
+            <div class="bg-primary/10 border border-primary/20 rounded-lg p-3">
+              <p class="text-primary text-sm">
                 <strong>Tandai sebagai dibayar:</strong> Entry stok berikut akan ditandai sebagai sudah dibayar ke supplier.
               </p>
             </div>
@@ -1126,8 +1124,8 @@
               </div>
             </div>
 
-            <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
-              <p class="text-yellow-800 dark:text-yellow-200 text-sm">
+            <div class="bg-muted border border-border rounded-lg p-3">
+              <p class="text-foreground text-sm">
                 <strong>Perhatian:</strong> Setelah ditandai dibayar, status ini tidak dapat diubah kembali.
               </p>
             </div>

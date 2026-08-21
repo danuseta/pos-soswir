@@ -40,12 +40,13 @@ router.get("/cashiers", authenticateToken, authorizeRole(["superadmin"]), async 
         CONVERT_TZ(u.created_at, '+07:00', '+00:00') as created_at,
         u.last_login,
         u.is_active,
+        u.shift_id,
         COUNT(ua.id) as total_activities,
         MAX(ua.created_at) as last_activity
       FROM users u 
       LEFT JOIN user_activities ua ON u.id = ua.user_id 
       WHERE u.role = 'cashier' 
-      GROUP BY u.id, u.username, u.role, u.created_at, u.last_login, u.is_active
+      GROUP BY u.id, u.username, u.role, u.created_at, u.last_login, u.is_active, u.shift_id
       ORDER BY u.username ASC
     `);
     connection.release();

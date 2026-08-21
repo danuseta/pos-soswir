@@ -26,6 +26,5 @@ export type Size = VariantProps<typeof toggleVariants>["size"];
 
 export {
 	Root,
-	//
 	Root as Toggle,
 };

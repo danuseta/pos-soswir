@@ -1,6 +1,5 @@
 import { fontFamily } from "tailwindcss/defaultTheme";
 
-/** @type {import('tailwindcss').Config} */
 const config = {
 	darkMode: ["class"],
 	content: [
@@ -44,10 +43,6 @@ const config = {
 				destructive: {
 					DEFAULT: "hsl(var(--destructive) / <alpha-value>)",
 					foreground: "hsl(var(--destructive-foreground) / <alpha-value>)"
-				},
-				success: {
-					DEFAULT: "hsl(var(--success) / <alpha-value>)",
-					foreground: "hsl(var(--success-foreground) / <alpha-value>)"
 				},
 				muted: {
 					DEFAULT: "hsl(var(--muted) / <alpha-value>)",

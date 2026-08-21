@@ -66,7 +66,8 @@ export function handleApiError(error: any): ApiError {
         return {
           message: error.message || ERROR_MESSAGES.FORBIDDEN,
           status: 403,
-          code: ERROR_TYPES.FORBIDDEN
+          code: ERROR_TYPES.FORBIDDEN,
+          details: error.details
         };
       case 404:
         return {

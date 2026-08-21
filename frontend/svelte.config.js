@@ -4,7 +4,6 @@ import { resolve } from 'path';
 
 const isDev = process.env.NODE_ENV === 'development';
 
-/** @type {import('@sveltejs/kit').Config} */
 const config = {
 	preprocess: [
 		vitePreprocess({
@@ -47,7 +46,7 @@ const config = {
 					'style-src': ['self', 'unsafe-inline'],
 					'img-src': ['self', 'data:', 'blob:', 'https://res.cloudinary.com'],
 					'font-src': ['self'],
-					'connect-src': ['self', 'https://pos-soswir.shankara.web.id'],
+					'connect-src': ['self', 'http://localhost:3002'],
 					'manifest-src': ['self']
 				}
 			}

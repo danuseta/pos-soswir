@@ -134,7 +134,6 @@
     <Button 
       on:click={handleSaveProfile} 
       disabled={isSaving}
-      class="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800"
     > 
       <IconWrapper icon={Save} className="mr-2 h-4 w-4" />
       {isSaving ? 'Menyimpan...' : 'Simpan Perubahan'}
@@ -147,7 +146,7 @@
     <Card>
       <CardHeader>
         <CardTitle class="flex items-center gap-2">
-          <IconWrapper icon={User} className="h-5 w-5 text-green-600" />
+          <IconWrapper icon={User} className="h-5 w-5" />
           Informasi Profil
         </CardTitle>
         <CardDescription>
@@ -161,7 +160,6 @@
             id="username" 
             bind:value={currentProfile.username} 
             placeholder="Masukkan username baru"
-            class="border-green-200 focus:border-green-500 focus:ring-green-500"
           />
         </div>
       </CardContent>
@@ -170,7 +168,7 @@
     <Card>
       <CardHeader>
         <CardTitle class="flex items-center gap-2">
-          <IconWrapper icon={Lock} className="h-5 w-5 text-green-600" />
+          <IconWrapper icon={Lock} className="h-5 w-5" />
           Ubah Password
         </CardTitle>
         <CardDescription>
@@ -186,7 +184,6 @@
               type={showCurrentPassword ? "text" : "password"}
               bind:value={currentProfile.currentPassword} 
               placeholder="Masukkan password lama"
-              class="border-green-200 focus:border-green-500 focus:ring-green-500"
             />
             <Button
               type="button"
@@ -197,7 +194,7 @@
             >
               <IconWrapper 
                 icon={showCurrentPassword ? EyeOff : Eye} 
-                className="h-4 w-4 text-gray-500 hover:text-green-600" 
+                className="h-4 w-4" 
               />
             </Button>
           </div>
@@ -211,7 +208,6 @@
               type={showNewPassword ? "text" : "password"}
               bind:value={currentProfile.newPassword} 
               placeholder="Masukkan password baru"
-              class="border-green-200 focus:border-green-500 focus:ring-green-500"
             />
             <Button
               type="button"
@@ -222,7 +218,7 @@
             >
               <IconWrapper 
                 icon={showNewPassword ? EyeOff : Eye} 
-                className="h-4 w-4 text-gray-500 hover:text-green-600" 
+                className="h-4 w-4" 
               />
             </Button>
           </div>
@@ -236,7 +232,6 @@
               type={showConfirmPassword ? "text" : "password"}
               bind:value={currentProfile.confirmPassword} 
               placeholder="Konfirmasi password baru"
-              class="border-green-200 focus:border-green-500 focus:ring-green-500"
             />
             <Button
               type="button"
@@ -247,19 +242,19 @@
             >
               <IconWrapper 
                 icon={showConfirmPassword ? EyeOff : Eye} 
-                className="h-4 w-4 text-gray-500 hover:text-green-600" 
+                className="h-4 w-4" 
               />
             </Button>
           </div>
         </div>
 
-        <div class="bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 rounded-lg p-4">
+        <div class="bg-muted border border-border rounded-lg p-4">
           <div class="flex">
             <div class="ml-3">
-              <h3 class="text-sm font-medium text-green-800 dark:text-green-200">
+              <h3 class="text-sm font-medium text-foreground">
                 Tips Keamanan
               </h3>
-              <div class="mt-2 text-sm text-green-700 dark:text-green-300">
+              <div class="mt-2 text-sm text-muted-foreground">
                 <ul class="list-disc list-inside space-y-1">
                   <li>Gunakan password minimal 6 karakter</li>
                   <li>Kombinasikan huruf, angka, dan simbol</li>

@@ -1,13 +1,4 @@
-/**
- * Utility functions for working with theme CSS variables
- * This helps with Tailwind CSS 4.x compatibility
- */
 
-/**
- * Returns a class string with all theme CSS variable replacements
- * @param classNames String of class names that might contain theme variables
- * @returns String with proper CSS variable usage
- */
 export function applyThemeClasses(classNames: string): string {
   return classNames
     .replace(/bg-background/g, 'bg-[hsl(var(--background))]')
@@ -51,38 +42,6 @@ import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
 
 export const theme = writable<'light' | 'dark'>('light');
-export const userRole = writable<'superadmin' | 'cashier' | null>(null);
-
-const colorConfigs = {
-  superadmin: {
-    light: {
-      primary: '220 91% 58%',
-      primaryForeground: '220 8% 98%',
-      success: '142 76% 36%',
-      ring: '220 91% 58%'
-    },
-    dark: {
-      primary: '220 91% 58%',
-      primaryForeground: '220 8% 98%', 
-      success: '142 76% 36%',
-      ring: '220 91% 58%'
-    }
-  },
-  cashier: {
-    light: {
-      primary: '142 76% 36%',
-      primaryForeground: '142 8% 98%',
-      success: '142 76% 36%',
-      ring: '142 76% 36%'
-    },
-    dark: {
-      primary: '142 76% 36%',
-      primaryForeground: '142 8% 98%',
-      success: '142 76% 36%',
-      ring: '142 76% 36%'
-    }
-  }
-};
 
 export function initializeTheme(): void {
   if (!browser) return;
@@ -98,15 +57,6 @@ export function initializeTheme(): void {
   }
 }
 
-export function initializeUserRole(): void {
-  if (!browser) return;
-  
-  const role = localStorage.getItem("pos_user_role") as 'superadmin' | 'cashier' | null;
-  if (role) {
-    setUserRole(role);
-  }
-}
-
 export function setTheme(newTheme: 'light' | 'dark'): void {
   if (!browser) return;
   
@@ -118,35 +68,6 @@ export function setTheme(newTheme: 'light' | 'dark'): void {
   } else {
     document.documentElement.classList.remove('dark');
   }
-  
-  updateRoleColors();
-}
-
-export function setUserRole(role: 'superadmin' | 'cashier'): void {
-  if (!browser) return;
-  
-  userRole.set(role);
-  updateRoleColors();
-}
-
-function updateRoleColors(): void {
-  if (!browser) return;
-  
-  let currentTheme: 'light' | 'dark' = 'light';
-  let currentRole: 'superadmin' | 'cashier' | null = null;
-  
-  theme.subscribe(value => currentTheme = value)();
-  userRole.subscribe(value => currentRole = value)();
-  
-  if (!currentRole) return;
-  
-  const colors = colorConfigs[currentRole][currentTheme];
-  const root = document.documentElement;
-  
-  root.style.setProperty('--primary', colors.primary);
-  root.style.setProperty('--primary-foreground', colors.primaryForeground);
-  root.style.setProperty('--success', colors.success);
-  root.style.setProperty('--ring', colors.ring);
 }
 
 export function toggleTheme(): void {

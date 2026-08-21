@@ -18,6 +18,8 @@
   import { BACKEND_URL, getAuthHeaders } from "$lib/apiConfig";
   import { browser } from '$app/environment';
   import IconWrapper from "$lib/components/IconWrapper.svelte";
+  import RowActions from "$lib/components/RowActions.svelte";
+  import RowActionItem from "$lib/components/RowActionItem.svelte";
   import AlertMessage from "$lib/components/AlertMessage.svelte";
   import { useAlert } from "$lib/composables/useAlert";
 
@@ -150,7 +152,6 @@
   async function loadRevenueData() {
     try {
       isLoading = true;
-      showAlertMessage('info', 'Memuat data pendapatan...');
       
       const response = await fetch(`${BACKEND_URL}/api/sales/revenue?_t=${Date.now()}`, {
         headers: getAuthHeaders()
@@ -161,7 +162,6 @@
         console.log('Raw revenue data from API:', revenueData);
         console.log('Daily data sample:', revenueData.daily[0]);
         console.log('All daily dates:', revenueData.daily.map(item => item.date));
-        showAlertMessage('success', 'Data pendapatan berhasil dimuat');
       } else {
         const errorData = await response.json();
         throw new Error(errorData.message || "Gagal memuat data pendapatan");
@@ -440,19 +440,18 @@
                   </TableCell>
                   <TableCell class="font-medium w-[180px] text-center truncate">{item.formatted_date}</TableCell>
                   <TableCell class="text-center font-mono text-sm w-[140px]">{formatCurrency(item.total_revenue)}</TableCell>
-                  <TableCell class="text-center font-mono text-success text-sm font-semibold w-[130px]">{formatCurrency(item.total_profit)}</TableCell>
+                  <TableCell class="text-center font-mono text-primary text-sm font-semibold w-[130px]">{formatCurrency(item.total_profit)}</TableCell>
                   <TableCell class="text-center font-mono text-primary text-sm w-[120px]">{formatCurrency(item.store_profit)}</TableCell>
                   <TableCell class="text-center font-mono text-destructive text-sm w-[120px]">{formatCurrency(item.supplier_profit)}</TableCell>
                   <TableCell class="text-center font-medium w-[100px]">{item.transaction_count}</TableCell>
                   <TableCell class="text-center w-[100px]">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      on:click={() => viewDetail(item.type, item.date, `Detail ${item.type_label} - ${item.formatted_date}`)}
-                    >
-                      <IconWrapper icon={Eye} className="mr-1 h-3 w-3" />
-                      Detail
-                    </Button>
+                    <RowActions>
+                      <RowActionItem
+                        icon={Eye}
+                        label="Lihat Detail"
+                        on:click={() => viewDetail(item.type, item.date, `Detail ${item.type_label} - ${item.formatted_date}`)}
+                      />
+                    </RowActions>
                   </TableCell>
                 </TableRow>
               {/each}
@@ -518,11 +517,11 @@
                 <TableCell>
                   <div class="flex items-center gap-2 justify-center">
                     {#if item.kategori.toLowerCase() === 'makanan'}
-                      <IconWrapper icon={UtensilsCrossed} className="h-4 w-4 text-orange-600" />
+                      <IconWrapper icon={UtensilsCrossed} className="h-4 w-4 text-primary" />
                     {:else if item.kategori.toLowerCase() === 'minuman'}
                       <IconWrapper icon={Coffee} className="h-4 w-4 text-primary" />
                     {:else if item.kategori.toLowerCase() === 'pubj'}
-                      <IconWrapper icon={Truck} className="h-4 w-4 text-purple-600" />
+                      <IconWrapper icon={Truck} className="h-4 w-4 text-primary" />
                     {:else}
                       <IconWrapper icon={Package} className="h-4 w-4 text-muted-foreground" />
                     {/if}
@@ -540,7 +539,7 @@
                   </Badge>
                 </TableCell>
                 <TableCell>{item.kasir}</TableCell>
-                <TableCell class="text-success">
+                <TableCell class="text-primary">
                   {formatCurrency(item.keuntungan_toko)}
                 </TableCell>
                 <TableCell class="text-primary">

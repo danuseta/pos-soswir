@@ -349,7 +349,6 @@
         return;
       }
       
-      showAlertMessage('info', 'Memuat data dashboard...');
       
       const response = await fetch(`${BACKEND_URL}/api/dashboard?view=${chartView}`, {
         headers: getAuthHeaders()
@@ -358,7 +357,6 @@
       if (response.ok) {
         dashboardData = await response.json();
         prepareChartData();
-        showAlertMessage('success', 'Data dashboard berhasil dimuat');
       } else {
         const errorData = await response.json();
         throw new Error(errorData.message || "Gagal memuat data dashboard");
@@ -451,10 +449,10 @@
       <Card>
         <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle class="text-sm font-medium">Total Keuntungan Toko</CardTitle>
-          <IconWrapper icon={DollarSign} className="h-4 w-4 text-success" />
+          <IconWrapper icon={DollarSign} className="h-4 w-4 text-primary" />
         </CardHeader>
         <CardContent>
-          <div class="text-2xl font-bold text-success">{formatCurrency(dashboardData.totalStats.storeProfit)}</div>
+          <div class="text-2xl font-bold text-primary">{formatCurrency(dashboardData.totalStats.storeProfit)}</div>
           <p class="text-xs text-muted-foreground">Toko + Pajak PUBJ</p>
         </CardContent>
       </Card>
@@ -462,10 +460,10 @@
       <Card>
         <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle class="text-sm font-medium">Keuntungan Hari Ini</CardTitle>
-          <IconWrapper icon={DollarSign} className="h-4 w-4 text-success" />
+          <IconWrapper icon={DollarSign} className="h-4 w-4 text-primary" />
         </CardHeader>
         <CardContent>
-          <div class="text-2xl font-bold text-success">{formatCurrency(dashboardData.todayStats.storeProfit)}</div>
+          <div class="text-2xl font-bold text-primary">{formatCurrency(dashboardData.todayStats.storeProfit)}</div>
           <p class="text-xs text-muted-foreground">Toko + Pajak PUBJ</p>
         </CardContent>
       </Card>
@@ -582,10 +580,10 @@
               {#each dashboardData.categoryStats as category}
                 <div class="flex items-center justify-between p-3 border rounded-lg">
                   <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 rounded-lg {category.is_reseller ? 'bg-orange-100 dark:bg-orange-900' : 'bg-primary/10'} flex items-center justify-center">
+                    <div class="w-10 h-10 rounded-lg {category.is_reseller ? 'bg-muted' : 'bg-primary/10'} flex items-center justify-center">
                       <IconWrapper 
                         icon={category.is_reseller ? Users : Store} 
-                        className="h-5 w-5 {category.is_reseller ? 'text-orange-600 dark:text-orange-300' : 'text-primary'}" 
+                        className="h-5 w-5 {category.is_reseller ? 'text-primary' : 'text-primary'}" 
                       />
                     </div>
                     <div>
@@ -593,7 +591,7 @@
                       <div class="flex items-center gap-2 text-sm text-muted-foreground">
                         <span>{category.product_count || 0} produk</span>
                         {#if category.is_reseller}
-                          <Badge variant="outline" class="text-orange-600 border-orange-300">
+                          <Badge variant="outline" class="text-primary border-border">
                             <IconWrapper icon={Percent} className="mr-1 h-3 w-3" />
                             PUBJ
                           </Badge>
@@ -605,7 +603,7 @@
                     <p class="font-medium">{formatCurrency(category.total_revenue || 0)}</p>
                     {#if category.is_reseller && category.total_tax_amount}
                       <div class="text-sm">
-                        <p class="text-success">Pajak: {formatCurrency(category.total_tax_amount)}</p>
+                        <p class="text-primary">Pajak: {formatCurrency(category.total_tax_amount)}</p>
                         <p class="text-primary">Supplier: {formatCurrency(category.total_supplier_amount)}</p>
                       </div>
                     {:else}
@@ -646,7 +644,7 @@
                       <div class="flex items-center gap-2 text-sm text-muted-foreground">
                         <span>{product.total_sold} terjual</span>
                         {#if product.is_reseller}
-                          <Badge variant="outline" class="text-orange-600 border-orange-300 text-xs">
+                          <Badge variant="outline" class="text-primary border-border text-xs">
                             PUBJ {product.tax_percentage}%
                           </Badge>
                         {/if}
@@ -656,7 +654,7 @@
                   <div class="text-right">
                     <p class="font-medium">{formatCurrency(product.total_revenue)}</p>
                     {#if product.is_reseller && product.store_profit > 0}
-                                              <p class="text-xs text-success">
+                                              <p class="text-xs text-primary">
                         Fee: {formatCurrency(product.store_profit)}
                       </p>
                     {/if}

@@ -73,3 +73,6 @@ coverage/
 test-rate-limit-auth.js
 
 /script
+
+# OMC tooling state
+.omc/
