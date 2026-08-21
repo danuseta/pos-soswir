@@ -8,7 +8,6 @@ export {
 	List,
 	Trigger,
 	Content,
-	//
 	Root as Tabs,
 	List as TabsList,
 	Trigger as TabsTrigger,

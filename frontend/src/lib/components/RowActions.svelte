@@ -24,7 +24,6 @@
     const ruangBawah = window.innerHeight - rect.bottom;
     const kananDariTepi = window.innerWidth - rect.right;
 
-    // Menu dipasang fixed supaya tidak terpotong oleh area scroll tabel.
     menuStyle =
       ruangBawah < 220
         ? `position: fixed; bottom: ${window.innerHeight - rect.top + 4}px; right: ${kananDariTepi}px;`
