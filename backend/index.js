@@ -28,6 +28,7 @@ const { createProductTable } = require("./models/product");
 const { createSalesTables } = require("./models/sale");
 const { createStoreSettingsTable } = require("./models/settings");
 const { createActivityLogTable } = require("./models/activity");
+const { createShiftTables } = require("./models/shift");
 
 const activityCleanup = require("./utils/activityCleanup");
 const { authenticateToken, authorizeRole } = require("./middleware/authMiddleware");
@@ -211,7 +212,9 @@ const initializeDatabase = async () => {
       createStoreSettingsTable(),
       createActivityLogTable()
     ]);
-    
+
+    await createShiftTables();
+
     console.log("✅ All database tables initialized");
     
     if (isProduction || isStaging) {
