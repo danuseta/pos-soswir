@@ -3,6 +3,7 @@
   import { goto } from "$app/navigation";
   import { Tabs, TabsContent, TabsList, TabsTrigger } from "$lib/components/ui/tabs";
   import CashierList from "$lib/components/cashiers/CashierList.svelte";
+  import ShiftSchedule from "$lib/components/cashiers/ShiftSchedule.svelte";
 
   let allowed = false;
 
@@ -37,7 +38,7 @@
       </TabsContent>
 
       <TabsContent value="jadwal">
-        <p class="text-muted-foreground py-8">Jadwal shift akan tampil di sini.</p>
+        <ShiftSchedule />
       </TabsContent>
     </Tabs>
   </div>
