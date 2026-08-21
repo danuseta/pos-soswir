@@ -11,7 +11,6 @@
   import { BACKEND_URL, getAuthHeaders } from "$lib/apiConfig";
   import { browser } from '$app/environment';
   import IconWrapper from "$lib/components/IconWrapper.svelte";
-  import Pagination from "$lib/components/Pagination.svelte";
   import AlertMessage from "$lib/components/AlertMessage.svelte";
   import { useAlert } from "$lib/composables/useAlert";
 
@@ -22,8 +21,6 @@
 
   let statusInterval;
 
-  let currentPage = 1;
-  let itemsPerPage = 10;
   let sortField = 'username';
   let sortDirection = 'asc';
 
@@ -45,6 +42,102 @@
   let selectedCashierName = '';
   let loadingActivities = false;
 
+  let shifts = [];
+  let showShiftDialog = false;
+  let editingShift = null;
+  let shiftForm = { label: "", start_time: "08:00", end_time: "10:00" };
+  let isSavingShift = false;
+
+  async function loadShifts() {
+    const response = await fetch(`${BACKEND_URL}/api/shifts`, { headers: getAuthHeaders() });
+    if (!response.ok) {
+      showAlertMessage('error', 'Gagal memuat daftar sesi');
+      return;
+    }
+    shifts = await response.json();
+  }
+
+  function jam(value) {
+    return String(value).slice(0, 5);
+  }
+
+  async function pindahSesi(cashier, shiftId) {
+    const tujuan = shiftId === "" ? null : Number(shiftId);
+    const response = await fetch(`${BACKEND_URL}/api/shifts/assign/${cashier.id}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ shift_id: tujuan })
+    });
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      showAlertMessage('error', data.message || 'Gagal memindahkan kasir');
+      return;
+    }
+
+    cashiers = cashiers.map((c) => (c.id === cashier.id ? { ...c, shift_id: tujuan } : c));
+    const namaSesi = shifts.find((sh) => sh.id === tujuan);
+    showAlertMessage('success', namaSesi ? `${cashier.username} dipindah ke ${namaSesi.label}.` : `${cashier.username} dikeluarkan dari sesi.`);
+  }
+
+  function bukaTambahSesi() {
+    editingShift = null;
+    shiftForm = { label: "", start_time: "08:00", end_time: "10:00" };
+    showShiftDialog = true;
+  }
+
+  function bukaEditSesi(shift) {
+    editingShift = shift;
+    shiftForm = { label: shift.label, start_time: jam(shift.start_time), end_time: jam(shift.end_time) };
+    showShiftDialog = true;
+  }
+
+  async function simpanSesi() {
+    isSavingShift = true;
+    const payload = {
+      label: shiftForm.label,
+      start_time: `${shiftForm.start_time}:00`,
+      end_time: `${shiftForm.end_time}:00`
+    };
+
+    const response = await fetch(
+      editingShift ? `${BACKEND_URL}/api/shifts/${editingShift.id}` : `${BACKEND_URL}/api/shifts`,
+      { method: editingShift ? 'PUT' : 'POST', headers: getAuthHeaders(), body: JSON.stringify(payload) }
+    );
+    isSavingShift = false;
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      showAlertMessage('error', data.message || 'Gagal menyimpan sesi');
+      return;
+    }
+
+    showAlertMessage('success', editingShift ? 'Sesi berhasil diperbarui.' : 'Sesi baru berhasil ditambahkan.');
+    showShiftDialog = false;
+    await loadShifts();
+  }
+
+  async function hapusSesi(shift) {
+    if (!confirm(`Hapus ${shift.label} (${jam(shift.start_time)}-${jam(shift.end_time)})? Kasir di sesi ini jadi tanpa jadwal dan tidak bisa login.`)) {
+      return;
+    }
+
+    const response = await fetch(`${BACKEND_URL}/api/shifts/${shift.id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      showAlertMessage('error', data.message || 'Gagal menghapus sesi');
+      return;
+    }
+
+    showAlertMessage('success', 'Sesi dihapus.');
+    cashiers = cashiers.map((c) => (c.shift_id === shift.id ? { ...c, shift_id: null } : c));
+    await loadShifts();
+  }
+
 
 
   onMount(async () => {
@@ -55,6 +148,8 @@
       }
       
       
+      await loadShifts();
+
       const response = await fetch(`${BACKEND_URL}/api/users/cashiers`, {
         headers: getAuthHeaders()
       });
@@ -377,23 +472,17 @@
     return diffMinutes < 5;
   }
 
-  $: paginatedCashiers = (() => {
-    if (itemsPerPage >= filteredCashiers.length) {
-      return filteredCashiers;
+  $: grup = [
+    ...shifts.map((shift) => ({
+      shift,
+      cashiers: filteredCashiers.filter((c) => c.shift_id === shift.id)
+    })),
+    {
+      shift: null,
+      cashiers: filteredCashiers.filter((c) => !c.shift_id)
     }
-    const start = (currentPage - 1) * itemsPerPage;
-    const end = start + itemsPerPage;
-    return filteredCashiers.slice(start, end);
-  })();
+  ];
 
-  function handlePageChange(page: number) {
-    currentPage = page;
-  }
-
-  function handleItemsPerPageChange(items: number) {
-    itemsPerPage = items;
-    currentPage = 1;
-  }
 
   function toggleSort(field: string) {
     if (sortField === field) {
@@ -408,7 +497,6 @@
     searchTerm = '';
     sortField = 'username';
     sortDirection = 'asc';
-    currentPage = 1;
   }
 </script>
 
@@ -420,6 +508,10 @@
     >
       <IconWrapper icon={PlusCircle} className="mr-2 h-4 w-4" />
       Tambah Kasir
+    </Button>
+    <Button variant="outline" on:click={bukaTambahSesi} class="w-full sm:w-auto">
+      <IconWrapper icon={Clock} className="mr-2 h-4 w-4" />
+      Tambah Sesi
     </Button>
   </div>
 
@@ -522,13 +614,43 @@
                   </div>
                 </TableHead>
                 <TableHead class="text-center w-[120px]">Aktivitas</TableHead>
+                <TableHead class="text-center w-[150px]">Sesi</TableHead>
                 <TableHead class="text-center w-[120px]">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {#each paginatedCashiers as cashier, index (cashier.id)}
+              {#each grup as g (g.shift ? g.shift.id : 'tanpa-sesi')}
+                {#if g.shift || g.cashiers.length > 0}
+                  <TableRow class="bg-muted/50 hover:bg-muted/50">
+                    <TableCell colspan={8} class="py-2">
+                      <div class="flex flex-wrap items-center gap-3">
+                        {#if g.shift}
+                          <span class="font-semibold text-sm">{g.shift.label}</span>
+                          <span class="text-sm text-muted-foreground">
+                            {jam(g.shift.start_time)} - {jam(g.shift.end_time)} setiap hari
+                          </span>
+                          <span class="text-xs text-muted-foreground">{g.cashiers.length} kasir</span>
+                          <div class="ml-auto flex gap-1">
+                            <Button variant="outline" size="sm" on:click={() => bukaEditSesi(g.shift)} title="Edit sesi">
+                              <IconWrapper icon={Edit} className="h-4 w-4" />
+                            </Button>
+                            <Button variant="destructive" size="sm" on:click={() => hapusSesi(g.shift)} title="Hapus sesi">
+                              <IconWrapper icon={Trash2} className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        {:else}
+                          <span class="font-semibold text-sm">Belum ada sesi</span>
+                          <span class="text-sm text-muted-foreground">Kasir di sini tidak bisa login</span>
+                          <span class="text-xs text-muted-foreground">{g.cashiers.length} kasir</span>
+                        {/if}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                {/if}
+
+                {#each g.cashiers as cashier, index (cashier.id)}
                 <TableRow>
-                  <TableCell class="font-medium text-center">{(currentPage - 1) * itemsPerPage + index + 1}</TableCell>
+                  <TableCell class="font-medium text-center">{index + 1}</TableCell>
                   <TableCell class="w-[200px] text-center">
                     <div class="flex items-center gap-3 justify-center">
                                           <div class="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
@@ -577,6 +699,18 @@
                     </div>
                   </TableCell>
                   <TableCell class="text-center">
+                    <select
+                      value={cashier.shift_id ?? ""}
+                      on:change={(e) => pindahSesi(cashier, e.currentTarget.value)}
+                      class="w-full h-9 rounded-md border border-input bg-background px-2 text-sm"
+                    >
+                      <option value="">Tanpa sesi</option>
+                      {#each shifts as shift}
+                        <option value={shift.id}>{shift.label}</option>
+                      {/each}
+                    </select>
+                  </TableCell>
+                  <TableCell class="text-center">
                     <div class="flex justify-center space-x-1">
                       <Button 
                         variant="outline" 
@@ -596,10 +730,11 @@
                     </div>
                   </TableCell>
                 </TableRow>
+                {/each}
               {/each}
-              {#if paginatedCashiers.length === 0}
+              {#if filteredCashiers.length === 0}
                 <TableRow>
-                  <TableCell colspan={7} class="h-24 text-center">
+                  <TableCell colspan={8} class="h-24 text-center">
                     {filteredCashiers.length === 0 && cashiers.length > 0 ? 'Tidak ada kasir yang sesuai dengan filter.' : 'Belum ada kasir yang tersedia.'}
                   </TableCell>
                 </TableRow>
@@ -608,14 +743,6 @@
           </Table>
         </div>
       </ScrollArea>
-      
-      <Pagination 
-        {currentPage}
-        totalItems={filteredCashiers.length}
-        {itemsPerPage}
-        onPageChange={handlePageChange}
-        onItemsPerPageChange={handleItemsPerPageChange}
-      />
     </div>
   {/if}
 </div>
@@ -762,6 +889,46 @@
       
       <DialogFooter>
         <Button variant="outline" on:click={() => showActivityModal = false}>Tutup</Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+{/if}
+
+{#if showShiftDialog}
+  <Dialog open={showShiftDialog} onOpenChange={(open) => { if (!open) showShiftDialog = false; }}>
+    <DialogContent class="sm:max-w-[425px]">
+      <DialogHeader>
+        <DialogTitle>{editingShift ? "Edit Sesi" : "Tambah Sesi"}</DialogTitle>
+        <DialogDescription>
+          Jam sesi berlaku setiap hari. Kasir di sesi ini cuma bisa login pada rentang jam tersebut, dengan toleransi 15 menit.
+        </DialogDescription>
+      </DialogHeader>
+
+      <div class="space-y-4 py-2">
+        <div class="space-y-2">
+          <Label for="sesi-label">Nama sesi</Label>
+          <Input id="sesi-label" bind:value={shiftForm.label} placeholder="Sesi 1" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div class="space-y-2">
+            <Label for="sesi-mulai">Jam mulai</Label>
+            <Input id="sesi-mulai" type="time" bind:value={shiftForm.start_time} />
+          </div>
+          <div class="space-y-2">
+            <Label for="sesi-selesai">Jam selesai</Label>
+            <Input id="sesi-selesai" type="time" bind:value={shiftForm.end_time} />
+          </div>
+        </div>
+      </div>
+
+      <DialogFooter>
+        <Button variant="outline" on:click={() => (showShiftDialog = false)} disabled={isSavingShift}>
+          Batal
+        </Button>
+        <Button on:click={simpanSesi} disabled={isSavingShift}>
+          {isSavingShift ? "Menyimpan..." : "Simpan"}
+        </Button>
       </DialogFooter>
     </DialogContent>
   </Dialog>

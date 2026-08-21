@@ -1,30 +1,29 @@
 const { pool } = require("../models/db");
-const { nowInJakarta, findActiveShift, findNextShift } = require("./shiftWindow");
-
-const DAY_NAMES = ["", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"];
+const { minutesNowInJakarta, isWithinWindow } = require("./shiftWindow");
 
 async function isOnShift(userId, role, at = new Date()) {
   if (role === "superadmin") {
-    return { allowed: true, shift: null, nextShift: null };
+    return { allowed: true, shift: null };
   }
 
   const connection = await pool.getConnection();
   try {
-    const [shifts] = await connection.query(
-      `SELECT s.id, s.day_of_week, s.start_time, s.end_time, s.label
-       FROM shifts s
-       JOIN shift_assignments sa ON sa.shift_id = s.id
-       WHERE sa.user_id = ? AND s.is_active = 1`,
+    const [rows] = await connection.query(
+      `SELECT s.id, s.label, s.start_time, s.end_time
+       FROM users u
+       JOIN shifts s ON s.id = u.shift_id AND s.is_active = 1
+       WHERE u.id = ?`,
       [userId]
     );
 
-    const now = nowInJakarta(at);
-    const shift = findActiveShift(shifts, now);
+    const shift = rows[0] || null;
+    if (!shift) {
+      return { allowed: false, shift: null };
+    }
 
     return {
-      allowed: shift !== null,
-      shift,
-      nextShift: shift ? null : findNextShift(shifts, now)
+      allowed: isWithinWindow(minutesNowInJakarta(at), shift.start_time, shift.end_time),
+      shift
     };
   } finally {
     connection.release();
@@ -33,15 +32,14 @@ async function isOnShift(userId, role, at = new Date()) {
 
 function describeShift(shift) {
   if (!shift) return null;
-  const day = DAY_NAMES[shift.day_of_week] || "";
-  return `${day} ${String(shift.start_time).slice(0, 5)}-${String(shift.end_time).slice(0, 5)}`;
+  return `${shift.label} ${String(shift.start_time).slice(0, 5)}-${String(shift.end_time).slice(0, 5)}`;
 }
 
-function outOfShiftMessage(nextShift) {
-  const jadwal = describeShift(nextShift);
+function outOfShiftMessage(shift) {
+  const jadwal = describeShift(shift);
   return jadwal
-    ? `Di luar jadwal shift Anda. Jadwal berikutnya: ${jadwal}.`
-    : "Anda belum punya jadwal shift. Hubungi superadmin.";
+    ? `Di luar jam shift Anda. Jadwal Anda ${jadwal} setiap hari.`
+    : "Anda belum ditempatkan di sesi shift mana pun. Hubungi superadmin.";
 }
 
 module.exports = { isOnShift, describeShift, outOfShiftMessage };

@@ -36,8 +36,8 @@ router.post("/login", async (req, res) => {
       connection.release();
       return res.status(403).json({
         code: "OUT_OF_SHIFT",
-        message: outOfShiftMessage(shiftStatus.nextShift),
-        nextShift: shiftStatus.nextShift
+        message: outOfShiftMessage(shiftStatus.shift),
+        shift: shiftStatus.shift
       });
     }
 

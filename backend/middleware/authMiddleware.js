@@ -20,8 +20,8 @@ const authenticateToken = async (req, res, next) => {
     if (!shiftStatus.allowed) {
       return res.status(403).json({
         code: "OUT_OF_SHIFT",
-        message: outOfShiftMessage(shiftStatus.nextShift),
-        nextShift: shiftStatus.nextShift
+        message: outOfShiftMessage(shiftStatus.shift),
+        shift: shiftStatus.shift
       });
     }
   } catch (error) {

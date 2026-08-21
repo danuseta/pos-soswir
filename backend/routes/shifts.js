@@ -8,11 +8,8 @@ const router = express.Router();
 const onlySuperadmin = [authenticateToken, authorizeRole(["superadmin"])];
 
 async function validatePayload(connection, body, excludeShiftId) {
-  const { day_of_week, start_time, end_time, label, user_ids } = body;
+  const { start_time, end_time, label } = body;
 
-  if (!Number.isInteger(day_of_week) || day_of_week < 1 || day_of_week > 7) {
-    return "Hari tidak valid.";
-  }
   if (!start_time || !end_time) {
     return "Jam mulai dan jam selesai wajib diisi.";
   }
@@ -20,27 +17,15 @@ async function validatePayload(connection, body, excludeShiftId) {
     return "Jam selesai harus lebih besar dari jam mulai.";
   }
   if (!label || label.trim() === "") {
-    return "Label sesi tidak boleh kosong.";
-  }
-  if (!Array.isArray(user_ids) || user_ids.length === 0) {
-    return "Pilih minimal satu kasir.";
-  }
-
-  const [rows] = await connection.query(
-    "SELECT id FROM users WHERE id IN (?) AND role = 'cashier'",
-    [user_ids]
-  );
-  if (rows.length !== user_ids.length) {
-    return "Ada pengguna yang bukan kasir atau tidak ditemukan.";
+    return "Nama sesi tidak boleh kosong.";
   }
 
   const [bentrok] = await connection.query(
-    `SELECT id FROM shifts
-     WHERE day_of_week = ? AND id <> ? AND start_time < ? AND end_time > ?`,
-    [day_of_week, excludeShiftId || 0, end_time, start_time]
+    "SELECT id FROM shifts WHERE id <> ? AND start_time < ? AND end_time > ?",
+    [excludeShiftId || 0, end_time, start_time]
   );
   if (bentrok.length > 0) {
-    return "Jam sesi bertabrakan dengan sesi lain di hari yang sama.";
+    return "Jam sesi bertabrakan dengan sesi lain.";
   }
 
   return null;
@@ -50,23 +35,10 @@ router.get("/", ...onlySuperadmin, async (req, res) => {
   try {
     const connection = await pool.getConnection();
     const [shifts] = await connection.query(
-      "SELECT id, day_of_week, start_time, end_time, label, is_active FROM shifts ORDER BY day_of_week ASC, start_time ASC"
-    );
-    const [assignments] = await connection.query(
-      `SELECT sa.shift_id, u.id, u.username
-       FROM shift_assignments sa
-       JOIN users u ON u.id = sa.user_id
-       ORDER BY u.username ASC`
+      "SELECT id, label, start_time, end_time, is_active FROM shifts ORDER BY start_time ASC"
     );
     connection.release();
-
-    const byShift = new Map();
-    for (const row of assignments) {
-      if (!byShift.has(row.shift_id)) byShift.set(row.shift_id, []);
-      byShift.get(row.shift_id).push({ id: row.id, username: row.username });
-    }
-
-    res.json(shifts.map((shift) => ({ ...shift, cashiers: byShift.get(shift.id) || [] })));
+    res.json(shifts);
   } catch (error) {
     console.error("Error fetching shifts:", error);
     res.status(500).json({ message: "Server error fetching shifts" });
@@ -82,23 +54,15 @@ router.post("/", ...onlySuperadmin, async (req, res) => {
       return res.status(400).json({ message: problem });
     }
 
-    const { day_of_week, start_time, end_time, label, user_ids } = req.body;
-
-    await connection.beginTransaction();
+    const { start_time, end_time, label } = req.body;
     const [result] = await connection.query(
-      "INSERT INTO shifts (day_of_week, start_time, end_time, label) VALUES (?, ?, ?, ?)",
-      [day_of_week, start_time, end_time, label.trim()]
+      "INSERT INTO shifts (label, start_time, end_time) VALUES (?, ?, ?)",
+      [label.trim(), start_time, end_time]
     );
-    await connection.query(
-      "INSERT INTO shift_assignments (shift_id, user_id) VALUES ?",
-      [user_ids.map((id) => [result.insertId, id])]
-    );
-    await connection.commit();
     connection.release();
 
     res.status(201).json({ id: result.insertId });
   } catch (error) {
-    await connection.rollback();
     connection.release();
     console.error("Error creating shift:", error);
     res.status(500).json({ message: "Server error creating shift" });
@@ -115,29 +79,18 @@ router.put("/:id", ...onlySuperadmin, async (req, res) => {
       return res.status(400).json({ message: problem });
     }
 
-    const { day_of_week, start_time, end_time, label, user_ids } = req.body;
-
-    await connection.beginTransaction();
+    const { start_time, end_time, label } = req.body;
     const [result] = await connection.query(
-      "UPDATE shifts SET day_of_week = ?, start_time = ?, end_time = ?, label = ? WHERE id = ?",
-      [day_of_week, start_time, end_time, label.trim(), shiftId]
+      "UPDATE shifts SET label = ?, start_time = ?, end_time = ? WHERE id = ?",
+      [label.trim(), start_time, end_time, shiftId]
     );
-    if (result.affectedRows === 0) {
-      await connection.rollback();
-      connection.release();
-      return res.status(404).json({ message: "Sesi tidak ditemukan." });
-    }
-    await connection.query("DELETE FROM shift_assignments WHERE shift_id = ?", [shiftId]);
-    await connection.query(
-      "INSERT INTO shift_assignments (shift_id, user_id) VALUES ?",
-      [user_ids.map((id) => [shiftId, id])]
-    );
-    await connection.commit();
     connection.release();
 
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Sesi tidak ditemukan." });
+    }
     res.json({ id: shiftId });
   } catch (error) {
-    await connection.rollback();
     connection.release();
     console.error("Error updating shift:", error);
     res.status(500).json({ message: "Server error updating shift" });
@@ -155,10 +108,44 @@ router.delete("/:id", ...onlySuperadmin, async (req, res) => {
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: "Sesi tidak ditemukan." });
     }
-    res.json({ message: "Sesi dihapus." });
+    res.json({ message: "Sesi dihapus. Kasir di sesi itu jadi tanpa jadwal." });
   } catch (error) {
     console.error("Error deleting shift:", error);
     res.status(500).json({ message: "Server error deleting shift" });
+  }
+});
+
+router.put("/assign/:userId", ...onlySuperadmin, async (req, res) => {
+  const userId = Number(req.params.userId);
+  const shiftId = req.body.shift_id === null ? null : Number(req.body.shift_id);
+
+  try {
+    const connection = await pool.getConnection();
+
+    const [users] = await connection.query(
+      "SELECT id FROM users WHERE id = ? AND role = 'cashier'",
+      [userId]
+    );
+    if (users.length === 0) {
+      connection.release();
+      return res.status(404).json({ message: "Kasir tidak ditemukan." });
+    }
+
+    if (shiftId !== null) {
+      const [shifts] = await connection.query("SELECT id FROM shifts WHERE id = ?", [shiftId]);
+      if (shifts.length === 0) {
+        connection.release();
+        return res.status(404).json({ message: "Sesi tidak ditemukan." });
+      }
+    }
+
+    await connection.query("UPDATE users SET shift_id = ? WHERE id = ?", [shiftId, userId]);
+    connection.release();
+
+    res.json({ user_id: userId, shift_id: shiftId });
+  } catch (error) {
+    console.error("Error assigning shift:", error);
+    res.status(500).json({ message: "Server error assigning shift" });
   }
 });
 
