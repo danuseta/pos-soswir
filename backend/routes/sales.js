@@ -167,6 +167,19 @@ router.get("/tax-report", authenticateToken, authorizeRole(["superadmin"]), asyn
 router.get("/revenue", authenticateToken, authorizeRole(["superadmin"]), async (req, res) => {
   try {
     const connection = await pool.getConnection();
+    const monthlyDateFilter = req.query.all_months === "true"
+      ? ""
+      : "WHERE s.created_at >= DATE_SUB(NOW(), INTERVAL 12 MONTH)";
+    const taxTotalsJoin = `
+      LEFT JOIN (
+        SELECT
+          sale_id,
+          SUM(store_profit) AS store_profit,
+          SUM(supplier_amount) AS supplier_amount
+        FROM sale_taxes
+        GROUP BY sale_id
+      ) st ON s.id = st.sale_id
+    `;
     
     const [dailyRevenue] = await connection.query(`
       SELECT 
@@ -176,7 +189,7 @@ router.get("/revenue", authenticateToken, authorizeRole(["superadmin"]), async (
         COALESCE(SUM(st.supplier_amount), 0) as supplier_profit,
         COUNT(s.id) as transaction_count
       FROM sales s
-      LEFT JOIN sale_taxes st ON s.id = st.sale_id
+      ${taxTotalsJoin}
       WHERE s.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
       GROUP BY DATE_FORMAT(s.created_at, '%Y-%m-%d')
       ORDER BY date DESC
@@ -191,7 +204,7 @@ router.get("/revenue", authenticateToken, authorizeRole(["superadmin"]), async (
         COALESCE(SUM(st.supplier_amount), 0) as supplier_profit,
         COUNT(s.id) as transaction_count
       FROM sales s
-      LEFT JOIN sale_taxes st ON s.id = st.sale_id
+      ${taxTotalsJoin}
       WHERE s.created_at >= DATE_SUB(NOW(), INTERVAL 12 WEEK)
       GROUP BY YEAR(s.created_at), WEEK(s.created_at, 1)
       ORDER BY year DESC, week DESC
@@ -206,8 +219,8 @@ router.get("/revenue", authenticateToken, authorizeRole(["superadmin"]), async (
         COALESCE(SUM(st.supplier_amount), 0) as supplier_profit,
         COUNT(s.id) as transaction_count
       FROM sales s
-      LEFT JOIN sale_taxes st ON s.id = st.sale_id
-      WHERE s.created_at >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+      ${taxTotalsJoin}
+      ${monthlyDateFilter}
       GROUP BY YEAR(s.created_at), MONTH(s.created_at)
       ORDER BY year DESC, month DESC
     `);
@@ -220,7 +233,7 @@ router.get("/revenue", authenticateToken, authorizeRole(["superadmin"]), async (
         COALESCE(SUM(st.supplier_amount), 0) as supplier_profit,
         COUNT(s.id) as transaction_count
       FROM sales s
-      LEFT JOIN sale_taxes st ON s.id = st.sale_id
+      ${taxTotalsJoin}
       GROUP BY YEAR(s.created_at)
       ORDER BY year DESC
     `);

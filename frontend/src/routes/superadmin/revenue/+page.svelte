@@ -4,7 +4,7 @@
   import { Badge } from "$lib/components/ui/badge";
   import { ScrollArea } from "$lib/components/ui/scroll-area";
   import Pagination from "$lib/components/Pagination.svelte";
-  import { Eye, RefreshCw, SortAsc, SortDesc, ArrowUpDown } from "lucide-svelte";
+  import { Eye, FileSpreadsheet, RefreshCw, SortAsc, SortDesc, ArrowUpDown } from "lucide-svelte";
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { api, apiData } from "$lib/apiConfig";
@@ -16,8 +16,10 @@
   import { useAlert } from "$lib/composables/useAlert";
   import { formatCurrency } from "$lib/utils/format";
   import RevenueDetailDialog from '$lib/components/revenue/RevenueDetailDialog.svelte';
+  import RevenueExportDialog from '$lib/components/revenue/RevenueExportDialog.svelte';
   import ListFilters from '$lib/components/ListFilters.svelte';
   import { combineRevenueData, filterAndSortRevenue } from '$lib/utils/managementLists';
+  import { exportRevenueExcel, filterMonthlyRevenue, type RevenueExportOptions } from '$lib/utils/revenueExport';
 
   let revenueData = {
     daily: [],
@@ -33,6 +35,8 @@
   let detailData = [];
   let detailTitle = '';
   let isLoadingDetail = false;
+  let showExportDialog = false;
+  let isExporting = false;
 
   let searchTerm = "";
   let currentPage = 1;
@@ -94,6 +98,28 @@
     }
   }
 
+  async function exportRevenue(options: RevenueExportOptions) {
+    try {
+      isExporting = true;
+      const allRevenue = await apiData(api.get('/api/sales/revenue?all_months=true'));
+      const rows = filterMonthlyRevenue(allRevenue.monthly || [], options);
+
+      if (rows.length === 0) {
+        showAlertMessage('error', 'Tidak ada data pendapatan pada periode yang dipilih');
+        return;
+      }
+
+      await exportRevenueExcel(rows, options);
+      showExportDialog = false;
+      showAlertMessage('success', `${rows.length} bulan berhasil diekspor ke Excel`);
+    } catch (err) {
+      console.error('Error exporting revenue:', err);
+      showAlertMessage('error', `Gagal mengekspor pendapatan: ${err.message}`);
+    } finally {
+      isExporting = false;
+    }
+  }
+
   onMount(async () => {
     const token = typeof localStorage !== 'undefined' ? localStorage.getItem("pos_token") : null;
     const userRole = typeof localStorage !== 'undefined' ? localStorage.getItem("pos_user_role") : null;
@@ -138,17 +164,21 @@
 <div class="flex-1 space-y-4 p-4 md:p-8 pt-6 max-w-full overflow-hidden">
   <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0">
     <h2 class="text-2xl md:text-3xl font-bold tracking-tight">Total Pendapatan</h2>
-    <Button 
-      on:click={loadRevenueData} 
-      disabled={isLoading} 
-        class="w-full sm:w-auto"
-    >
-      <IconWrapper icon={RefreshCw} className="mr-2 h-4 w-4 {isLoading ? 'animate-spin' : ''}" />
-      Refresh Data
-    </Button>
+    <div class="flex w-full sm:w-auto flex-col sm:flex-row gap-2">
+      <Button variant="outline" on:click={() => showExportDialog = true} disabled={isLoading} class="w-full sm:w-auto">
+        <IconWrapper icon={FileSpreadsheet} className="mr-2 h-4 w-4" />
+        Export Excel
+      </Button>
+      <Button on:click={loadRevenueData} disabled={isLoading} class="w-full sm:w-auto">
+        <IconWrapper icon={RefreshCw} className="mr-2 h-4 w-4 {isLoading ? 'animate-spin' : ''}" />
+        Refresh Data
+      </Button>
+    </div>
   </div>
 
   <AlertMessage />
+
+  <RevenueExportDialog open={showExportDialog} {isExporting} onClose={() => showExportDialog = false} onExport={exportRevenue} />
 
   <ListFilters bind:searchTerm bind:secondaryValue={typeFilter} bind:sortField {sortDirection} searchPlaceholder="Cari data pendapatan..." secondaryOptions={[{ value: '', label: 'Semua Periode' }, { value: 'daily', label: 'Harian' }, { value: 'monthly', label: 'Bulanan' }, { value: 'yearly', label: 'Tahunan' }]} sortOptions={[{ value: 'date', label: 'Tanggal' }, { value: 'type', label: 'Tipe' }, { value: 'total_revenue', label: 'Total Pendapatan' }, { value: 'total_profit', label: 'Total Keuntungan' }, { value: 'store_profit', label: 'Keuntungan Toko' }, { value: 'supplier_profit', label: 'Keuntungan Supplier' }, { value: 'transaction_count', label: 'Jumlah Transaksi' }]} filteredCount={filteredRevenue.length} totalCount={combinedRevenueData.length} itemLabel="data" onClear={clearFilters} onSort={toggleSort} />
 

@@ -73,7 +73,10 @@ router.get("/", authenticateToken, authorizeRole(["superadmin"]), async (req, re
     const [rows] = await connection.query(`
       SELECT 
         tl.id,
+        tl.sale_id,
+        tl.product_id,
         tl.created_at as waktu,
+        DATE_FORMAT(tl.created_at, '%Y-%m') as periode,
         tl.product_name as produk,
         COALESCE(c.name, 'Tidak Berkategori') as kategori,
         COALESCE(c.is_reseller, 0) as is_reseller,

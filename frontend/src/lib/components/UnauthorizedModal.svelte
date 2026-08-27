@@ -5,6 +5,7 @@
   import { fade, scale } from 'svelte/transition';
   import { quintOut } from 'svelte/easing';
   import { AlertTriangle } from 'lucide-svelte';
+  import IconWrapper from '$lib/components/IconWrapper.svelte';
 
   $: modalState = $authModal;
 
@@ -39,7 +40,7 @@
       <Card class="shadow-lg">
         <CardHeader class="text-center pb-4">
           <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
-            <AlertTriangle class="h-7 w-7 text-destructive" />
+            <IconWrapper icon={AlertTriangle} className="h-7 w-7 text-destructive" />
           </div>
 
           <CardTitle class="text-xl font-semibold text-foreground" id="modal-title">

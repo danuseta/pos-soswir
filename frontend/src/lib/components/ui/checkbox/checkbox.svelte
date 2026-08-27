@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Checkbox as CheckboxPrimitive } from "bits-ui";
 	import { Check, Minus } from "lucide-svelte";
+	import IconWrapper from "$lib/components/IconWrapper.svelte";
 	import { cn } from "$lib/utils.js";
 
 	type $$Props = CheckboxPrimitive.Props;
@@ -26,9 +27,9 @@
 		let:isIndeterminate
 	>
 		{#if isChecked}
-			<Check class="h-3.5 w-3.5" />
+			<IconWrapper icon={Check} className="h-3.5 w-3.5" />
 		{:else if isIndeterminate}
-			<Minus class="h-3.5 w-3.5" />
+			<IconWrapper icon={Minus} className="h-3.5 w-3.5" />
 		{/if}
 	</CheckboxPrimitive.Indicator>
 </CheckboxPrimitive.Root>

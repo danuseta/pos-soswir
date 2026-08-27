@@ -40,7 +40,7 @@
         <TableHeader>
           <TableRow>
             <TableHead class="w-[60px] text-center">No.</TableHead>
-            <TableHead class="w-[200px] text-center">Produk</TableHead>
+            <TableHead class="w-[200px] text-left">Produk</TableHead>
             <TableHead class="w-[120px] text-center">Kategori</TableHead>
             <TableHead class="w-[120px] text-center">Supplier</TableHead>
             {#each [['price', 'Harga', 'w-[100px]'], ['stock', 'Stok', 'w-[80px]']] as column}
@@ -63,8 +63,8 @@
           {#each products as product, index (product.id)}
             <TableRow>
               <TableCell class="font-medium text-center">{(currentPage - 1) * itemsPerPage + index + 1}</TableCell>
-              <TableCell class="w-[200px] text-center">
-                <div class="flex items-center justify-center">
+              <TableCell class="w-[200px] text-left">
+                <div class="flex items-center justify-start gap-2">
                   {#if product.image_url}
                     <img src={product.image_url} alt={product.name} class="w-8 h-8 object-cover rounded-lg" />
                   {:else}
@@ -72,7 +72,7 @@
                       <IconWrapper icon={ImageIcon} className="h-4 w-4 text-muted-foreground" />
                     </div>
                   {/if}
-                  <div class="min-w-0 flex-1 text-center">
+                  <div class="min-w-0 flex-1 text-left">
                     <p class="font-medium truncate text-sm">{product.name}</p>
                     {#if product.description}<p class="text-xs text-muted-foreground truncate">{product.description}</p>{/if}
                   </div>

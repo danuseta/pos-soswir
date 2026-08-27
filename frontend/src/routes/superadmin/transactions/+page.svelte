@@ -8,7 +8,8 @@
   import { useAlert } from "$lib/composables/useAlert";
   import TransactionTable from '$lib/components/transactions/TransactionTable.svelte';
   import TransactionControls from '$lib/components/transactions/TransactionControls.svelte';
-  import { exportTransactionsCsv, exportTransactionsExcel, filterAndSortTransactions } from '$lib/utils/transaction';
+  import TransactionExportDialog from '$lib/components/transactions/TransactionExportDialog.svelte';
+  import { exportTransactionsCsv, exportTransactionsExcel, filterAndSortTransactions, filterTransactionsByPeriod, type TransactionExportOptions } from '$lib/utils/transaction';
 
   let searchTerm = "";
   let transactions = [];
@@ -16,6 +17,7 @@
   let error = null;
   let dateRange = { from: null, to: null };
   let isExporting = false;
+  let showExportDialog = false;
 
   let currentPage = 1;
   let itemsPerPage = 10;
@@ -50,8 +52,9 @@
     }
   });
 
-  async function exportToCsv() {
-    if (filteredTransactions.length === 0) {
+  async function exportTransactions(options: TransactionExportOptions) {
+    const transactionsToExport = filterTransactionsByPeriod(transactions, options);
+    if (transactionsToExport.length === 0) {
       showAlertMessage('error', 'Tidak ada data yang bisa diekspor');
       return;
     }
@@ -61,12 +64,14 @@
     
     try {
       try {
-        await exportTransactionsExcel(filteredTransactions);
-        showAlertMessage('success', `Data transaksi berhasil diekspor ke Excel (${filteredTransactions.length} records)`);
+        await exportTransactionsExcel(transactionsToExport, options);
+        showExportDialog = false;
+        showAlertMessage('success', `Data transaksi berhasil diekspor ke Excel (${transactionsToExport.length} baris sumber)`);
       } catch (excelError) {
         console.error('Excel export failed, using CSV:', excelError);
-        exportTransactionsCsv(filteredTransactions);
-        showAlertMessage('success', `Data berhasil diekspor ke CSV (${filteredTransactions.length} records)`);
+        exportTransactionsCsv(transactionsToExport, options);
+        showExportDialog = false;
+        showAlertMessage('success', `Data berhasil diekspor ke CSV (${transactionsToExport.length} baris sumber)`);
       }
     } catch (error) {
       console.error('Export error:', error);
@@ -117,7 +122,14 @@
 </script>
 
 <div class="flex-1 space-y-4 p-4 md:p-8 pt-6 max-w-full overflow-hidden">
-  <TransactionControls bind:searchTerm bind:dateRange bind:sortField {sortDirection} filteredCount={filteredTransactions.length} totalCount={transactions.length} {isLoading} {isExporting} onExport={exportToCsv} onClear={clearFilters} onSort={toggleSort} />
+  <TransactionControls bind:searchTerm bind:dateRange bind:sortField {sortDirection} filteredCount={filteredTransactions.length} totalCount={transactions.length} {isLoading} {isExporting} onExport={() => showExportDialog = true} onClear={clearFilters} onSort={toggleSort} />
+
+  <TransactionExportDialog
+    open={showExportDialog}
+    {isExporting}
+    onClose={() => showExportDialog = false}
+    onExport={exportTransactions}
+  />
 
   <AlertMessage />
 

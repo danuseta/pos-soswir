@@ -47,8 +47,8 @@
           <TableRow>
             <TableHead class="w-[60px] text-center">No.</TableHead>
             {#each sortableColumns as column}
-              <TableHead class={`cursor-pointer ${column[2]} text-center`} on:click={() => onSort(column[0])}>
-                <div class="flex items-center justify-center">
+              <TableHead class={`cursor-pointer ${column[2]} ${column[0] === 'produk' ? 'text-left' : 'text-center'}`} on:click={() => onSort(column[0])}>
+                <div class={`flex items-center ${column[0] === 'produk' ? 'justify-start' : 'justify-center'}`}>
                   {column[1]}
                   <IconWrapper
                     icon={sortField === column[0] ? (sortDirection === 'asc' ? SortAsc : SortDesc) : ArrowUpDown}
@@ -85,7 +85,7 @@
               <TableCell class="w-[160px] text-center text-xs font-medium">
                 {formatDateTime(transaction.waktu)}
               </TableCell>
-              <TableCell class="w-[140px] text-center font-medium truncate" title={transaction.produk}>
+              <TableCell class="w-[140px] text-left font-medium truncate" title={transaction.produk}>
                 {transaction.produk}
               </TableCell>
               <TableCell class="w-[120px] text-center">

@@ -12,6 +12,7 @@
   import { fade } from 'svelte/transition';
   import { theme } from '$lib/themeStore';
   import { Eye, EyeOff } from 'lucide-svelte';
+  import IconWrapper from '$lib/components/IconWrapper.svelte';
 
   let username = "";
   let password = "";
@@ -174,9 +175,9 @@
               disabled={isLoading}
             >
               {#if showPassword}
-                <EyeOff class="w-5 h-5" />
+                <IconWrapper icon={EyeOff} className="w-5 h-5" />
               {:else}
-                <Eye class="w-5 h-5" />
+                <IconWrapper icon={Eye} className="w-5 h-5" />
               {/if}
             </button>
           </div>

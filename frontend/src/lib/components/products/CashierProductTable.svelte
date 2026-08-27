@@ -43,11 +43,11 @@
           <TableRow>
             {#each columns as column}
               <TableHead
-                class="cursor-pointer text-center"
+                class={`cursor-pointer ${column[0] === 'name' ? 'text-left' : 'text-center'}`}
                 style={`width: ${column[2]}`}
                 on:click={() => onSort(column[0])}
               >
-                <div class="flex items-center justify-center">
+                <div class={`flex items-center ${column[0] === 'name' ? 'justify-start' : 'justify-center'}`}>
                   {column[1]}
                   <IconWrapper
                     icon={sortField === column[0] ? (sortDirection === 'asc' ? SortAsc : SortDesc) : ArrowUpDown}
@@ -63,8 +63,8 @@
         <TableBody>
           {#each products as product (product.id)}
             <TableRow>
-              <TableCell class="w-[200px] text-center">
-                <div class="flex items-center justify-center">
+              <TableCell class="w-[200px] text-left">
+                <div class="flex items-center justify-start">
                   {#if product.image_url}
                     <img src={product.image_url} alt={product.name} class="w-10 h-10 object-cover rounded mr-2" />
                   {:else}
@@ -72,7 +72,7 @@
                       <IconWrapper icon={Package} className="h-5 w-5 text-muted-foreground" />
                     </div>
                   {/if}
-                  <div class="min-w-0">
+                  <div class="min-w-0 text-left">
                     <div class="font-medium truncate text-sm">{product.name}</div>
                     {#if product.description}
                       <div class="text-xs text-muted-foreground truncate">{product.description}</div>

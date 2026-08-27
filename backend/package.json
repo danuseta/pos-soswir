@@ -9,6 +9,7 @@
     "seed:products": "node scripts/seed-products.js",
     "dev": "nodemon index.js",
     "test": "node --test",
+    "smoke:crud": "node scripts/crud-smoke.js",
     "prod:start": "cross-env NODE_ENV=production pm2 start ecosystem.config.js --env production",
     "prod:stop": "pm2 stop soswir-pos-backend",
     "prod:restart": "pm2 restart soswir-pos-backend",

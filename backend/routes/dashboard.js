@@ -330,7 +330,7 @@ router.get("/revenue", authenticateToken, authorizeRole(["superadmin"]), async (
     
     const [weeklyRevenue] = await connection.query(`
       SELECT 
-        CONCAT('Minggu ', WEEK(s.created_at, 1) - WEEK(DATE_SUB(s.created_at, INTERVAL DAYOFMONTH(s.created_at) - 1 DAY), 1) + 1, ' - ', MONTHNAME(s.created_at), ' ', YEAR(s.created_at)) as periode,
+        CONCAT('Minggu ', WEEK(MIN(s.created_at), 1) - WEEK(DATE_SUB(MIN(s.created_at), INTERVAL DAYOFMONTH(MIN(s.created_at)) - 1 DAY), 1) + 1, ' - ', MONTHNAME(MIN(s.created_at)), ' ', YEAR(MIN(s.created_at))) as periode,
         WEEK(s.created_at, 1) as week_number,
         YEAR(s.created_at) as year,
         SUM(s.total_amount) as total_pendapatan,
@@ -346,7 +346,7 @@ router.get("/revenue", authenticateToken, authorizeRole(["superadmin"]), async (
     
     const [monthlyRevenue] = await connection.query(`
       SELECT 
-        CONCAT(MONTHNAME(s.created_at), ' ', YEAR(s.created_at)) as periode,
+        CONCAT(MONTHNAME(MIN(s.created_at)), ' ', YEAR(MIN(s.created_at))) as periode,
         MONTH(s.created_at) as month,
         YEAR(s.created_at) as year,
         SUM(s.total_amount) as total_pendapatan,
