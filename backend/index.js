@@ -31,6 +31,7 @@ const { createActivityLogTable } = require("./models/activity");
 const { createShiftTables } = require("./models/shift");
 
 const activityCleanup = require("./utils/activityCleanup");
+const dailyStockScheduler = require("./utils/dailyStockScheduler");
 const { authenticateToken, authorizeRole } = require("./middleware/authMiddleware");
 const { logApiRequests } = require("./middleware/loggerMiddleware");
 
@@ -301,6 +302,9 @@ const gracefulShutdown = (signal) => {
         await activityCleanup.destroy();
         console.log('✅ Activity cleanup stopped');
       }
+
+      dailyStockScheduler.stopScheduler();
+      console.log('✅ Daily stock scheduler stopped');
       
       if (pool && pool.end) {
         await pool.end();
@@ -340,6 +344,8 @@ process.on('uncaughtException', (error) => {
 });
 
 const server = app.listen(port, () => {
+  dailyStockScheduler.setupScheduler();
+
   console.log(`
 🚀 ===== SOSWIR POS BACKEND STARTED =====
 📅 Timestamp: ${new Date().toISOString()}

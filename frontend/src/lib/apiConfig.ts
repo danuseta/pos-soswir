@@ -23,13 +23,18 @@ export async function apiRequest<T = any>(
   const url = `${BACKEND_URL}${endpoint}`;
   
   const defaultHeaders = browser ? getAuthHeaders() : {};
+  const headers = {
+    ...defaultHeaders,
+    ...options.headers
+  };
+
+  if (browser && options.body instanceof FormData) {
+    delete headers['Content-Type'];
+  }
   
   const requestOptions: RequestInit = {
     ...options,
-    headers: {
-      ...defaultHeaders,
-      ...options.headers
-    }
+    headers
   };
 
   try {
@@ -88,9 +93,18 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify(data)
     }, enableRetry),
+
+  patch: <T = any>(endpoint: string, data?: any, enableRetry = false) =>
+    apiRequest<T>(endpoint, {
+      method: 'PATCH',
+      ...(data === undefined ? {} : { body: JSON.stringify(data) })
+    }, enableRetry),
   
-  delete: <T = any>(endpoint: string, enableRetry = false) => 
-    apiRequest<T>(endpoint, { method: 'DELETE' }, enableRetry),
+  delete: <T = any>(endpoint: string, data?: any, enableRetry = false) => 
+    apiRequest<T>(endpoint, {
+      method: 'DELETE',
+      ...(data === undefined ? {} : { body: JSON.stringify(data) })
+    }, enableRetry),
   
   upload: <T = any>(endpoint: string, formData: FormData, enableRetry = false) => 
     apiRequest<T>(endpoint, {
@@ -102,3 +116,13 @@ export const api = {
   withLoading: <T = any>(taskName: string, apiCall: () => Promise<ApiResponse<T>>) => 
     loadingManager.withLoading(taskName, apiCall)
 };
+
+export async function apiData<T>(request: Promise<ApiResponse<T>>): Promise<T> {
+  const response = await request;
+
+  if (!response.success) {
+    throw new Error(response.error?.message || response.message || 'Request failed');
+  }
+
+  return response.data as T;
+}

@@ -1,15 +1,17 @@
 <script lang="ts">
   import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "$lib/components/ui/card";
-  import { Alert, AlertDescription, AlertTitle } from "$lib/components/ui/alert";
   import { Badge } from "$lib/components/ui/badge";
-  import { DollarSign, ShoppingCart, TrendingUp, Package, AlertTriangle, Calendar, Truck } from "lucide-svelte";
+  import { ShoppingCart, TrendingUp, Package, AlertTriangle, Calendar, Truck } from "lucide-svelte";
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
-  import { BACKEND_URL, getAuthHeaders } from "$lib/apiConfig";
+  import { api, apiData } from "$lib/apiConfig";
   import { browser } from '$app/environment';
   import IconWrapper from "$lib/components/IconWrapper.svelte";
-  import { formatTransactionDateTime } from "$lib/utils/format";
+  import { formatCurrency, formatTransactionDateTime } from "$lib/utils/format";
   import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "$lib/components/ui/table";
+  import AlertMessage from '$lib/components/AlertMessage.svelte';
+  import CashierDashboardStats from '$lib/components/dashboard/CashierDashboardStats.svelte';
+  import { useAlert } from '$lib/composables/useAlert';
 
   let dashboardData = {
     todayStats: { transactions: 0, revenue: 0 },
@@ -24,26 +26,7 @@
   let isLoading = true;
   let error = null;
 
-  let showAlert = false;
-  let alertType = 'success';
-  let alertMessage = '';
-
-  function showAlertMessage(type: string, message: string) {
-    alertType = type;
-    alertMessage = message;
-    showAlert = true;
-    setTimeout(() => {
-      showAlert = false;
-    }, 3000);
-  }
-
-  function formatCurrency(amount) {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0
-    }).format(amount);
-  }
+  const { showAlertMessage } = useAlert();
 
   function formatDate(dateString) {
     if (!dateString) return 'Tanggal tidak valid';
@@ -76,16 +59,7 @@
       }
       
       
-      const response = await fetch(`${BACKEND_URL}/api/dashboard/cashier`, {
-        headers: getAuthHeaders()
-      });
-      
-      if (response.ok) {
-        dashboardData = await response.json();
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Gagal memuat data dashboard");
-      }
+      dashboardData = await apiData(api.get('/api/dashboard/cashier'));
     } catch (err) {
       console.error("Error loading dashboard:", err);
       error = err.message;
@@ -101,14 +75,7 @@
     <h2 class="text-3xl font-bold tracking-tight">Dashboard Kasir</h2>
   </div>
 
-  {#if showAlert}
-    <div class="fixed top-4 right-4 z-50 transition-all duration-300 {showAlert ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'}" style="min-width: 300px; max-width: 400px;">
-      <Alert variant={alertType === 'error' ? 'destructive' : 'default'} class="border-l-4 {alertType === 'success' ? 'border-l-primary bg-primary/10' : alertType === 'error' ? 'border-l-red-500 bg-red-50 dark:bg-red-900/10' : 'border-l-primary bg-primary/10'}">
-        <AlertTitle>{alertType === 'success' ? 'Berhasil!' : alertType === 'error' ? 'Error!' : 'Info'}</AlertTitle>
-        <AlertDescription>{alertMessage}</AlertDescription>
-      </Alert>
-    </div>
-  {/if}
+  <AlertMessage />
 
   {#if isLoading}
     <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -133,51 +100,7 @@
       </CardContent>
     </Card>
   {:else}
-    <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      <Card>
-        <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle class="text-sm font-medium">Penjualan Hari Ini</CardTitle>
-          <IconWrapper icon={DollarSign} className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div class="text-2xl font-bold">{formatCurrency(dashboardData.todayStats.revenue)}</div>
-          <p class="text-xs text-muted-foreground">{dashboardData.todayStats.transactions} transaksi</p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle class="text-sm font-medium">Penjualan Bulan Ini</CardTitle>
-          <IconWrapper icon={Calendar} className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div class="text-2xl font-bold">{formatCurrency(dashboardData.monthStats.revenue)}</div>
-          <p class="text-xs text-muted-foreground">{dashboardData.monthStats.transactions} transaksi</p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle class="text-sm font-medium">Total Produk</CardTitle>
-          <IconWrapper icon={Package} className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div class="text-2xl font-bold">{dashboardData.totals.products}</div>
-          <p class="text-xs text-muted-foreground">produk tersedia</p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle class="text-sm font-medium">Stok Rendah</CardTitle>
-          <IconWrapper icon={AlertTriangle} className="h-4 w-4 text-primary" />
-        </CardHeader>
-        <CardContent>
-          <div class="text-2xl font-bold text-primary">{dashboardData.totals.lowStockProducts}</div>
-          <p class="text-xs text-muted-foreground">perlu restok</p>
-        </CardContent>
-      </Card>
-    </div>
+    <CashierDashboardStats data={dashboardData} />
 
     <div class="grid gap-4 md:grid-cols-2">
       <Card>

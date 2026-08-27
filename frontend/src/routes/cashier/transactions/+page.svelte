@@ -1,18 +1,17 @@
 <script lang="ts">
   import { Button } from "$lib/components/ui/button";
   import { Input } from "$lib/components/ui/input";
-  import { ScrollArea } from "$lib/components/ui/scroll-area";
-  import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "$lib/components/ui/table";
-  import Pagination from "$lib/components/Pagination.svelte";
-  import { Search, FileText, Calendar, Filter, SortAsc, SortDesc, ArrowUpDown, User, Package, UtensilsCrossed, Coffee, Truck } from "lucide-svelte";
+  import { Search, FileText, Filter, SortAsc, SortDesc } from "lucide-svelte";
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
-  import { BACKEND_URL, getAuthHeaders } from "$lib/apiConfig";
+  import { api, apiData } from "$lib/apiConfig";
   import { browser } from '$app/environment';
   import IconWrapper from "$lib/components/IconWrapper.svelte";
-  import { Badge } from "$lib/components/ui/badge";
   import AlertMessage from "$lib/components/AlertMessage.svelte";
   import { useAlert } from "$lib/composables/useAlert";
+  import { formatCurrency, formatDateTime } from "$lib/utils/format";
+  import { downloadCsv } from '$lib/utils/csv';
+  import TransactionTable from '$lib/components/transactions/TransactionTable.svelte';
 
   let searchTerm = "";
   let transactions = [];
@@ -26,18 +25,6 @@
   let sortDirection = 'desc';
 
   const { showAlertMessage } = useAlert();
-
-  function getCategoryIcon(categoryName: string) {
-    if (categoryName.toLowerCase().includes('makanan')) {
-      return UtensilsCrossed;
-    } else if (categoryName.toLowerCase().includes('minuman')) {
-      return Coffee;
-    } else if (categoryName.toLowerCase().includes('pubj')) {
-      return Truck;
-    }
-    return Package;
-  }
-
 
   onMount(async () => {
     const token = typeof localStorage !== 'undefined' ? localStorage.getItem("pos_token") : null;
@@ -55,18 +42,8 @@
       }
       
       
-      const response = await fetch(`${BACKEND_URL}/api/transactions/cashier`, {
-        headers: getAuthHeaders()
-      });
-      
-      if (response.ok) {
-        transactions = await response.json();
-        console.log('Transaction data loaded:', transactions[0]);
-        isLoading = false;
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Gagal memuat data transaksi");
-      }
+      transactions = await apiData(api.get('/api/transactions/cashier'));
+      isLoading = false;
     } catch (err) {
       console.error("Error loading transactions:", err);
       error = err.message;
@@ -74,31 +51,6 @@
       isLoading = false;
     }
   });
-
-  function formatDateTime(dateString) {
-    if (!dateString) return '';
-    
-    const parts = dateString.replace('T', ' ').split(' ');
-    const datePart = parts[0];
-    const timePart = parts[1] ? parts[1].split('.')[0] : '00:00:00';
-    
-    const [year, month, day] = datePart.split('-').map(Number);
-    const [hours, minutes] = timePart.split(':').map(Number);
-    
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 
-                       'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
-    
-    return `${day} ${monthNames[month - 1]} ${year}, ${String(hours).padStart(2, '0')}.${String(minutes).padStart(2, '0')}`;
-  }
-
-  function formatCurrency(amount) {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(amount || 0);
-  }
 
   function handleDateRangeChange(event) {
     dateRange = event.detail;
@@ -111,10 +63,7 @@
     }
 
     const headers = ["Waktu", "Produk", "Kategori", "Jumlah", "Harga", "Total", "Kasir", "Metode Pembayaran"];
-    let csvContent = headers.join(",") + "\n";
-    
-    filteredTransactions.forEach((transaction) => {
-      const row = [
+    const rows = filteredTransactions.map((transaction) => [
         formatDateTime(transaction.waktu),
         transaction.produk,
         transaction.kategori,
@@ -123,30 +72,8 @@
         transaction.total,
         transaction.kasir,
         transaction.payment_method || 'Cash'
-      ];
-      
-      const formattedRow = row.map(field => {
-        if (field === null || field === undefined) return '';
-        return typeof field === 'string' && field.includes(',') 
-          ? `"${field}"` 
-          : String(field);
-      });
-      
-      csvContent += formattedRow.join(",") + "\n";
-    });
-    
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    
-    link.setAttribute("href", url);
-    link.setAttribute("download", `log_transaksi_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
+      ]);
+    downloadCsv(`log_transaksi_${new Date().toISOString().split('T')[0]}.csv`, headers, rows);
     showAlertMessage('success', 'Data transaksi berhasil diekspor ke CSV');
   }
 
@@ -330,134 +257,6 @@
       </div>
     </div>
   {:else}
-    <div class="bg-card rounded-lg shadow border border-border overflow-hidden">
-      <ScrollArea class="h-[calc(100vh-400px)]" orientation="both">
-        <div class="min-w-[1400px] p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead class="w-[60px] text-center">No.</TableHead>
-                <TableHead class="cursor-pointer w-[160px] text-center" on:click={() => toggleSort('waktu')}>
-                  <div class="flex items-center justify-center">
-                    Waktu
-                    <IconWrapper 
-                      icon={sortField === 'waktu' ? (sortDirection === 'asc' ? SortAsc : SortDesc) : ArrowUpDown} 
-                      className="ml-2 h-4 w-4" 
-                    />
-                  </div>
-                </TableHead>
-                <TableHead class="cursor-pointer w-[140px] text-center" on:click={() => toggleSort('produk')}>
-                  <div class="flex items-center justify-center">
-                    Produk
-                    <IconWrapper 
-                      icon={sortField === 'produk' ? (sortDirection === 'asc' ? SortAsc : SortDesc) : ArrowUpDown} 
-                      className="ml-2 h-4 w-4" 
-                    />
-                  </div>
-                </TableHead>
-                <TableHead class="cursor-pointer w-[120px] text-center" on:click={() => toggleSort('kategori')}>
-                  <div class="flex items-center justify-center">
-                    Kategori
-                    <IconWrapper 
-                      icon={sortField === 'kategori' ? (sortDirection === 'asc' ? SortAsc : SortDesc) : ArrowUpDown} 
-                      className="ml-2 h-4 w-4" 
-                    />
-                  </div>
-                </TableHead>
-                <TableHead class="w-[80px] text-center">Jumlah</TableHead>
-                <TableHead class="w-[100px] text-center">Harga</TableHead>
-                <TableHead class="cursor-pointer w-[110px] text-center" on:click={() => toggleSort('total')}>
-                  <div class="flex items-center justify-center">
-                    Total
-                    <IconWrapper 
-                      icon={sortField === 'total' ? (sortDirection === 'asc' ? SortAsc : SortDesc) : ArrowUpDown} 
-                      className="ml-2 h-4 w-4" 
-                    />
-                  </div>
-                </TableHead>
-                <TableHead class="cursor-pointer w-[100px] text-center" on:click={() => toggleSort('kasir')}>
-                  <div class="flex items-center justify-center">
-                    Kasir
-                    <IconWrapper 
-                      icon={sortField === 'kasir' ? (sortDirection === 'asc' ? SortAsc : SortDesc) : ArrowUpDown} 
-                      className="ml-2 h-4 w-4" 
-                    />
-                  </div>
-                </TableHead>
-                <TableHead class="cursor-pointer w-[120px] text-center" on:click={() => toggleSort('payment_method')}>
-                  <div class="flex items-center justify-center">
-                    Metode Pembayaran
-                    <IconWrapper 
-                      icon={sortField === 'payment_method' ? (sortDirection === 'asc' ? SortAsc : SortDesc) : ArrowUpDown} 
-                      className="ml-2 h-4 w-4" 
-                    />
-                  </div>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {#each paginatedTransactions as transaction, index (transaction.id)}
-                <TableRow>
-                  <TableCell class="w-[60px] text-center font-medium">{(currentPage - 1) * itemsPerPage + index + 1}</TableCell>
-                  <TableCell class="w-[160px] text-center">
-                    <div class="text-xs font-medium">{formatDateTime(transaction.waktu)}</div>
-                  </TableCell>
-                  <TableCell class="w-[140px] text-center">
-                    <div class="font-medium truncate" title={transaction.produk}>{transaction.produk}</div>
-                  </TableCell>
-                  <TableCell class="w-[120px] text-center">
-                    <div class="flex items-center gap-2 justify-center">
-                      {#if transaction.kategori.toLowerCase() === 'makanan'}
-                        <IconWrapper icon={UtensilsCrossed} className="h-4 w-4 text-primary" />
-                      {:else if transaction.kategori.toLowerCase() === 'minuman'}
-                        <IconWrapper icon={Coffee} className="h-4 w-4 text-primary" />
-                      {:else if transaction.kategori.toLowerCase() === 'pubj'}
-                        <IconWrapper icon={Truck} className="h-4 w-4 text-primary" />
-                      {:else}
-                        <IconWrapper icon={Package} className="h-4 w-4 text-muted-foreground" />
-                      {/if}
-                      <span class="text-sm font-medium">
-                        {transaction.kategori}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell class="w-[80px] text-center font-medium">{transaction.jumlah}</TableCell>
-                  <TableCell class="w-[100px] text-center font-mono text-sm">{formatCurrency(transaction.harga)}</TableCell>
-                  <TableCell class="w-[110px] text-center font-mono text-sm font-semibold">{formatCurrency(transaction.total)}</TableCell>
-                  <TableCell class="w-[100px] text-center">
-                    <div class="flex items-center justify-center gap-1">
-                      <div class="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center">
-                        <IconWrapper icon={User} className="h-3 w-3 text-primary" />
-                      </div>
-                      <span class="text-sm font-medium truncate" title={transaction.kasir}>{transaction.kasir}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell class="w-[120px] text-center">
-                    <Badge variant="outline" class="text-xs">
-                      {transaction.payment_method || 'Cash'}
-                    </Badge>
-                  </TableCell>
-                </TableRow>
-              {/each}
-              {#if paginatedTransactions.length === 0}
-                <TableRow>
-                  <TableCell colspan={11} class="h-24 text-center">
-                    {filteredTransactions.length === 0 && transactions.length > 0 ? 'Tidak ada transaksi yang sesuai dengan filter.' : 'Belum ada transaksi yang tersedia.'}
-                  </TableCell>
-                </TableRow>
-              {/if}
-            </TableBody>
-          </Table>
-        </div>
-      </ScrollArea>
-      
-      <Pagination 
-        {currentPage}
-        totalItems={filteredTransactions.length}
-        {itemsPerPage}
-        onPageChange={handlePageChange}
-        onItemsPerPageChange={handleItemsPerPageChange}
-      />
-    </div>
+    <TransactionTable transactions={paginatedTransactions} totalItems={filteredTransactions.length} allTransactionsCount={transactions.length} {currentPage} {itemsPerPage} {sortField} {sortDirection} onSort={toggleSort} onPageChange={handlePageChange} onItemsPerPageChange={handleItemsPerPageChange} />
   {/if}
 </div>

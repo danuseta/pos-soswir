@@ -1,16 +1,12 @@
 <script lang="ts">
   import { Button } from "$lib/components/ui/button";
-  import { Input } from "$lib/components/ui/input";
   import { ScrollArea } from "$lib/components/ui/scroll-area";
   import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "$lib/components/ui/table";
-  import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "$lib/components/ui/dialog";
-  import { Label } from "$lib/components/ui/label";
-  import { Alert, AlertDescription, AlertTitle } from "$lib/components/ui/alert";
   import { Badge } from "$lib/components/ui/badge";
-  import { PlusCircle, Edit, Trash2, Users, Search, Phone, Package, Eye, Calendar, DollarSign, TrendingUp, Filter, SortAsc, SortDesc, ArrowUpDown } from "lucide-svelte";
+  import { Edit, Trash2, Users, Phone, Package, Eye, SortAsc, SortDesc, ArrowUpDown } from "lucide-svelte";
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
-  import { BACKEND_URL, getAuthHeaders } from "$lib/apiConfig";
+  import { api, apiData } from "$lib/apiConfig";
   import { browser } from '$app/environment';
   import IconWrapper from "$lib/components/IconWrapper.svelte";
   import RowActions from "$lib/components/RowActions.svelte";
@@ -18,6 +14,12 @@
   import Pagination from "$lib/components/Pagination.svelte";
   import AlertMessage from "$lib/components/AlertMessage.svelte";
   import { useAlert } from "$lib/composables/useAlert";
+  import { formatCurrency } from "$lib/utils/format";
+  import SupplierFormDialog from '$lib/components/suppliers/SupplierFormDialog.svelte';
+  import SupplierHistoryDialog from '$lib/components/suppliers/SupplierHistoryDialog.svelte';
+  import SupplierPageHeader from '$lib/components/suppliers/SupplierPageHeader.svelte';
+  import ListFilters from '$lib/components/ListFilters.svelte';
+  import { createSupplierForm, createSupplierPayload, filterAndSortSuppliers } from '$lib/utils/managementLists';
 
   let suppliers = [];
   let isLoading = true;
@@ -33,18 +35,12 @@
 
   let showAddEditDialog = false;
   let editingSupplier = null;
-  let currentSupplier = {
-    id: null,
-    name: "",
-    phone: ""
-  };
+  let currentSupplier = createSupplierForm();
 
   let showHistoryDialog = false;
   let selectedSupplier = null;
   let supplierHistory = [];
   let historyLoading = false;
-
-
 
   onMount(async () => {
     const token = typeof localStorage !== 'undefined' ? localStorage.getItem("pos_token") : null;
@@ -60,7 +56,6 @@
         isLoading = false;
         return;
       }
-      
       await loadSuppliers();
       isLoading = false;
     } catch (err) {
@@ -73,17 +68,7 @@
 
   async function loadSuppliers() {
     try {
-      
-      const response = await fetch(`${BACKEND_URL}/api/suppliers`, {
-        headers: getAuthHeaders()
-      });
-      
-      if (response.ok) {
-        suppliers = await response.json();
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Gagal memuat data supplier");
-      }
+      suppliers = await apiData(api.get('/api/suppliers'));
     } catch (err) {
       console.error("Error loading suppliers:", err);
       showAlertMessage('error', `Gagal memuat supplier: ${err.message}`);
@@ -92,17 +77,13 @@
 
   function openAddDialog() {
     editingSupplier = null;
-    currentSupplier = { 
-      id: null, 
-      name: "", 
-      phone: ""
-    };
+    currentSupplier = createSupplierForm();
     showAddEditDialog = true;
   }
 
   function openEditDialog(supplier) {
     editingSupplier = supplier;
-    currentSupplier = { ...supplier };
+    currentSupplier = createSupplierForm(supplier);
     showAddEditDialog = true;
   }
 
@@ -115,41 +96,17 @@
 
       showAlertMessage('info', editingSupplier ? "Memperbarui supplier..." : "Menambah supplier baru...");
 
-      const supplierData = {
-        name: currentSupplier.name.trim(),
-        phone: currentSupplier.phone || null
-      };
-      
-      let response;
+      const supplierData = createSupplierPayload(currentSupplier);
       
       if (editingSupplier) {
-        response = await fetch(`${BACKEND_URL}/api/suppliers/${editingSupplier.id}`, {
-          method: 'PUT',
-          headers: {
-            ...getAuthHeaders(),
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(supplierData)
-        });
+        await apiData(api.put(`/api/suppliers/${editingSupplier.id}`, supplierData));
       } else {
-        response = await fetch(`${BACKEND_URL}/api/suppliers`, {
-          method: 'POST',
-          headers: {
-            ...getAuthHeaders(),
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(supplierData)
-        });
+        await apiData(api.post('/api/suppliers', supplierData));
       }
-      
-      if (response.ok) {
-        await loadSuppliers();
-        showAddEditDialog = false;
-        showAlertMessage('success', editingSupplier ? "Supplier berhasil diperbarui." : "Supplier baru berhasil ditambahkan.");
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Gagal menyimpan supplier.");
-      }
+
+      await loadSuppliers();
+      showAddEditDialog = false;
+      showAlertMessage('success', editingSupplier ? "Supplier berhasil diperbarui." : "Supplier baru berhasil ditambahkan.");
     } catch (err) {
       console.error("Error saving supplier:", err);
       showAlertMessage('error', `Error: ${err.message}`);
@@ -164,18 +121,9 @@
 
       showAlertMessage('info', "Menghapus supplier...");
       
-      const response = await fetch(`${BACKEND_URL}/api/suppliers/${supplierId}`, {
-        method: 'DELETE',
-        headers: getAuthHeaders()
-      });
-      
-      if (response.ok) {
-        await loadSuppliers();
-        showAlertMessage('success', "Supplier berhasil dihapus.");
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Gagal menghapus supplier.");
-      }
+      await apiData(api.delete(`/api/suppliers/${supplierId}`));
+      await loadSuppliers();
+      showAlertMessage('success', "Supplier berhasil dihapus.");
     } catch (err) {
       console.error("Error deleting supplier:", err);
       showAlertMessage('error', `Error: ${err.message}`);
@@ -189,16 +137,7 @@
     supplierHistory = [];
 
     try {
-      const response = await fetch(`${BACKEND_URL}/api/suppliers/${supplier.id}/history`, {
-        headers: getAuthHeaders()
-      });
-
-      if (response.ok) {
-        supplierHistory = await response.json();
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Gagal memuat riwayat supplier");
-      }
+      supplierHistory = await apiData(api.get(`/api/suppliers/${supplier.id}/history`));
     } catch (err) {
       console.error("Error loading supplier history:", err);
       showAlertMessage('error', `Gagal memuat riwayat: ${err.message}`);
@@ -207,53 +146,7 @@
     }
   }
 
-  function formatCurrency(amount) {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0
-    }).format(amount);
-  }
-
-  function calculateSupplierEstimatedRevenue() {
-    if (!supplierHistory || supplierHistory.length === 0) return 0;
-    
-    return supplierHistory.reduce((total, history) => {
-      const supplierEarning = parseFloat(history.supplier_earning || 0);
-      return total + (isNaN(supplierEarning) ? 0 : supplierEarning);
-    }, 0);
-  }
-
-  function calculateStoreEstimatedFee() {
-    if (!supplierHistory || supplierHistory.length === 0) return 0;
-    
-    return supplierHistory.reduce((total, history) => {
-      const storeFee = parseFloat(history.store_fee || 0);
-      return total + (isNaN(storeFee) ? 0 : storeFee);
-    }, 0);
-  }
-
-  $: filteredSuppliers = suppliers
-    .filter(s => {
-      const searchLower = searchTerm.toLowerCase();
-      return s.name.toLowerCase().includes(searchLower) ||
-             (s.phone && s.phone.includes(searchTerm));
-    })
-    .sort((a, b) => {
-      let aValue = a[sortField] || '';
-      let bValue = b[sortField] || '';
-      
-      if (typeof aValue === 'string') {
-        aValue = aValue.toLowerCase();
-        bValue = bValue.toLowerCase();
-      }
-      
-      if (sortDirection === 'asc') {
-        return aValue > bValue ? 1 : -1;
-      } else {
-        return aValue < bValue ? 1 : -1;
-      }
-    });
+  $: filteredSuppliers = filterAndSortSuppliers(suppliers, searchTerm, sortField, sortDirection);
 
   $: paginatedSuppliers = (() => {
     if (itemsPerPage >= filteredSuppliers.length) {
@@ -291,66 +184,11 @@
 </script>
 
 <div class="flex-1 space-y-4 p-4 md:p-8 pt-6">
-  <div class="flex items-center justify-between space-y-2">
-    <h2 class="text-3xl font-bold tracking-tight">Manajemen Supplier PUBJ</h2>
-    <Button 
-      on:click={openAddDialog}
-    >
-      <IconWrapper icon={PlusCircle} className="mr-2 h-4 w-4" />
-      Tambah Supplier
-    </Button>
-  </div>
+  <SupplierPageHeader onAdd={openAddDialog} />
 
   <AlertMessage />
 
-  <div class="bg-card rounded-lg shadow p-4">
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-      <div class="flex items-center gap-2">
-        <IconWrapper icon={Search} className="h-5 w-5 text-muted-foreground" />
-        <Input 
-          type="text" 
-          placeholder="Cari supplier..." 
-          bind:value={searchTerm} 
-        />
-      </div>
-      
-      <div class="flex gap-2">
-        <Button 
-          variant="outline" 
-          on:click={clearFilters} 
-          size="sm"
-        >
-          <IconWrapper icon={Filter} className="mr-2 h-4 w-4" />
-          Reset Filter
-        </Button>
-      </div>
-    </div>
-    
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-sm text-muted-foreground">
-      <span class="flex-shrink-0">Menampilkan {filteredSuppliers.length} dari {suppliers.length} supplier</span>
-      <div class="flex items-center gap-2 flex-shrink-0">
-        <span class="hidden sm:inline">Urutkan:</span>
-        <select 
-          bind:value={sortField}
-          class="px-2 py-1 border rounded text-sm bg-background"
-        >
-          <option value="name">Nama</option>
-          <option value="phone">Telepon</option>
-          <option value="created_at">Tanggal Dibuat</option>
-        </select>
-        <Button 
-          variant="outline" 
-          size="sm"
-          on:click={() => toggleSort(sortField)}
-        >
-          <IconWrapper 
-            icon={sortDirection === 'asc' ? SortAsc : SortDesc} 
-            className="h-4 w-4" 
-          />
-        </Button>
-      </div>
-    </div>
-  </div>
+  <ListFilters bind:searchTerm bind:sortField {sortDirection} searchPlaceholder="Cari supplier..." sortOptions={[{ value: 'name', label: 'Nama' }, { value: 'phone', label: 'Telepon' }, { value: 'created_at', label: 'Tanggal Dibuat' }]} filteredCount={filteredSuppliers.length} totalCount={suppliers.length} itemLabel="supplier" onClear={clearFilters} onSort={toggleSort} />
 
   {#if isLoading}
     <div class="bg-card p-8 rounded-lg shadow flex justify-center">
@@ -457,181 +295,6 @@
   {/if}
 </div>
 
-{#if showAddEditDialog}
-  <Dialog open={showAddEditDialog} onOpenChange={(open) => { if (!open) showAddEditDialog = false; }}>
-    <DialogContent class="w-full max-w-[95vw] sm:max-w-[500px]">
-      <DialogHeader>
-        <DialogTitle>{editingSupplier ? "Edit Supplier" : "Tambah Supplier Baru"}</DialogTitle>
-        <DialogDescription>
-          {editingSupplier ? "Ubah informasi supplier di bawah ini." : "Isi informasi untuk supplier baru."}
-        </DialogDescription>
-      </DialogHeader>
-      
-      <div class="space-y-4 py-4">
-        <div>
-          <Label for="name" class="text-sm font-medium">Nama Supplier *</Label>
-          <Input 
-            id="name" 
-            bind:value={currentSupplier.name} 
-            placeholder="Masukkan nama supplier" 
-            class="mt-1"
-          />
-        </div>
-        
-        <div>
-          <Label for="phone" class="text-sm font-medium">No. Telepon</Label>
-          <Input 
-            id="phone" 
-            bind:value={currentSupplier.phone} 
-            placeholder="081234567890"
-            class="mt-1"
-          />
-          <p class="text-xs text-muted-foreground mt-1">
-            Nomor telepon untuk kontak supplier (opsional)
-          </p>
-        </div>
-      </div>
-      
-      <DialogFooter class="flex flex-col sm:flex-row gap-2">
-        <Button 
-          variant="outline" 
-          on:click={() => showAddEditDialog = false} 
-          class="w-full sm:w-auto"
-        >
-          Batal
-        </Button>
-        <Button 
-          on:click={handleSaveSupplier} 
-          class="w-full sm:w-auto"
-        >
-          <IconWrapper icon={editingSupplier ? Edit : PlusCircle} className="mr-2 h-4 w-4" />
-          {editingSupplier ? "Update Supplier" : "Tambah Supplier"}
-        </Button>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
-{/if}
+<SupplierFormDialog open={showAddEditDialog} supplier={currentSupplier} isEditing={Boolean(editingSupplier)} onClose={() => showAddEditDialog = false} onSave={handleSaveSupplier} />
 
-{#if showHistoryDialog && selectedSupplier}
-  <Dialog open={showHistoryDialog} onOpenChange={(open) => { if (!open) showHistoryDialog = false; }}>
-    <DialogContent class="w-full max-w-[95vw] lg:max-w-[900px] max-h-[90vh] overflow-hidden">
-      <DialogHeader>
-        <DialogTitle class="flex items-center gap-2">
-                                  <IconWrapper icon={Eye} className="h-5 w-5 text-primary" />
-          Riwayat Stok - {selectedSupplier.name}
-        </DialogTitle>
-        <DialogDescription>
-          Riwayat stok masuk dan transaksi supplier beserta detail pendapatan
-        </DialogDescription>
-      </DialogHeader>
-      
-      <div class="space-y-4 py-4 overflow-y-auto max-h-[60vh]">
-        {#if historyLoading}
-          <div class="flex items-center justify-center py-8">
-            <div class="text-center">
-              <div class="inline-block animate-spin h-8 w-8 border-4 border-t-blue-500 border-r-transparent rounded-full mb-4"></div>
-              <p class="text-sm text-muted-foreground">Memuat riwayat supplier...</p>
-            </div>
-          </div>
-        {:else if supplierHistory.length === 0}
-          <div class="text-center py-8">
-            <IconWrapper icon={Package} className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <p class="text-muted-foreground">Belum ada riwayat stok untuk supplier ini</p>
-          </div>
-        {:else}
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div class="bg-primary/10 border border-primary/20 rounded-lg p-4">
-              <h4 class="font-medium text-primary mb-2 flex items-center gap-2">
-                <IconWrapper icon={Calendar} className="h-4 w-4" />
-                Rangkuman Historis
-              </h4>
-              <div class="text-sm text-primary">
-                <p>Total produk berbeda: <strong>{new Set(supplierHistory.map(h => h.product_id)).size}</strong></p>
-                <p>Total stok masuk: <strong>{supplierHistory.reduce((sum, h) => sum + (h.quantity_in || 0), 0)} unit</strong></p>
-              </div>
-            </div>
-            
-            <div class="bg-primary/10 border border-primary/20 rounded-lg p-4">
-              <h4 class="font-medium text-primary mb-2 flex items-center gap-2">
-                <IconWrapper icon={DollarSign} className="h-4 w-4" />
-                Estimasi Total Pendapatan Supplier
-              </h4>
-              <div class="text-sm text-primary">
-                <p>Jika semua produk terjual habis: <strong>{formatCurrency(calculateSupplierEstimatedRevenue())}</strong></p>
-                <p class="text-xs mt-1 text-primary">*Berdasarkan harga jual dikurangi fee toko</p>
-              </div>
-            </div>
-            
-            <div class="bg-muted border border-border rounded-lg p-4">
-              <h4 class="font-medium text-foreground mb-2 flex items-center gap-2">
-                <IconWrapper icon={TrendingUp} className="h-4 w-4" />
-                Estimasi Fee Toko
-              </h4>
-              <div class="text-sm text-foreground">
-                <p>Jika semua produk terjual habis: <strong>{formatCurrency(calculateStoreEstimatedFee())}</strong></p>
-                <p class="text-xs mt-1 text-primary">*Total fee yang akan diterima toko</p>
-              </div>
-            </div>
-          </div>
-
-          <div class="border rounded-lg overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Tanggal</TableHead>
-                  <TableHead>Produk</TableHead>
-                  <TableHead class="text-center">Stok Masuk</TableHead>
-                  <TableHead class="text-center">Terjual</TableHead>
-                  <TableHead class="text-center">Sisa</TableHead>
-                  <TableHead class="text-right">Pendapatan Supplier</TableHead>
-                  <TableHead class="text-center">Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {#each supplierHistory as history (history.id)}
-                  <TableRow>
-                    <TableCell>
-                      <div class="flex items-center gap-2">
-                        <IconWrapper icon={Calendar} className="h-4 w-4 text-primary" />
-                        {new Date(history.entry_date).toLocaleDateString('id-ID')}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div class="flex items-center gap-2">
-                        <div class="w-8 h-8 bg-muted rounded flex items-center justify-center">
-                          <IconWrapper icon={Package} className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                        <span class="font-medium">{history.product_name}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell class="text-center font-medium">{history.quantity_in}</TableCell>
-                    <TableCell class="text-center">
-                                              <span class="font-medium text-primary">{history.quantity_sold}</span>
-                    </TableCell>
-                    <TableCell class="text-center">
-                      <span class="font-medium text-primary">{history.quantity_returned}</span>
-                    </TableCell>
-                    <TableCell class="text-right font-mono">
-                      {formatCurrency(history.supplier_earning || 0)}
-                    </TableCell>
-                    <TableCell class="text-center">
-                      <Badge variant={history.status === 'active' ? 'default' : history.status === 'completed' ? 'secondary' : 'outline'}>
-                        {history.status === 'active' ? 'Aktif' : history.status === 'completed' ? 'Selesai' : 'Dikembalikan'}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                {/each}
-              </TableBody>
-            </Table>
-          </div>
-        {/if}
-      </div>
-      
-      <DialogFooter>
-        <Button variant="outline" on:click={() => showHistoryDialog = false}>
-          Tutup
-        </Button>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
-{/if}
+<SupplierHistoryDialog open={showHistoryDialog} supplier={selectedSupplier} history={supplierHistory} isLoading={historyLoading} onClose={() => showHistoryDialog = false} />

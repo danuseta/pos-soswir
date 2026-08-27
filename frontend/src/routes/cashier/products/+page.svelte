@@ -1,18 +1,15 @@
 <script lang="ts">
   import { Button } from "$lib/components/ui/button";
   import { Input } from "$lib/components/ui/input";
-  import { ScrollArea } from "$lib/components/ui/scroll-area";
-  import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "$lib/components/ui/table";
-  import { Badge } from "$lib/components/ui/badge";
-  import { Package, Users, Percent, Search, Filter, SortAsc, SortDesc, ArrowUpDown, Power, PowerOff, UtensilsCrossed, Coffee, Truck } from "lucide-svelte";
+  import { Package, Search, Filter, SortAsc, SortDesc } from "lucide-svelte";
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
-  import { BACKEND_URL, getAuthHeaders } from "$lib/apiConfig";
+  import { api, apiData } from "$lib/apiConfig";
   import { browser } from '$app/environment';
   import IconWrapper from "$lib/components/IconWrapper.svelte";
-  import Pagination from "$lib/components/Pagination.svelte";
   import AlertMessage from "$lib/components/AlertMessage.svelte";
   import { useAlert } from "$lib/composables/useAlert";
+  import CashierProductTable from '$lib/components/products/CashierProductTable.svelte';
 
   let products = [];
   let categories = [];
@@ -30,26 +27,6 @@
   let currentPage = 1;
   let itemsPerPage = 10;
 
-  function formatCurrency(amount) {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0
-    }).format(amount);
-  }
-
-  function getCategoryIcon(categoryName: string) {
-    if (categoryName.toLowerCase().includes('makanan')) {
-      return UtensilsCrossed;
-    } else if (categoryName.toLowerCase().includes('minuman')) {
-      return Coffee;
-    } else if (categoryName.toLowerCase().includes('pubj')) {
-      return Truck;
-    }
-    return Package;
-  }
-
-
   onMount(async () => {
     const token = typeof localStorage !== 'undefined' ? localStorage.getItem("pos_token") : null;
     const userRole = typeof localStorage !== 'undefined' ? localStorage.getItem("pos_user_role") : null;
@@ -66,43 +43,25 @@
       }
       
       
-      const [productsResponse, categoriesResponse, suppliersResponse] = await Promise.all([
-        fetch(`${BACKEND_URL}/api/products`, { headers: getAuthHeaders() }),
-        fetch(`${BACKEND_URL}/api/categories`, { headers: getAuthHeaders() }),
-        fetch(`${BACKEND_URL}/api/suppliers`, { headers: getAuthHeaders() })
+      const [productsResult, categoriesResult, suppliersResult] = await Promise.allSettled([
+        apiData<any[]>(api.get('/api/products')),
+        apiData<any[]>(api.get('/api/categories')),
+        apiData<any[]>(api.get('/api/suppliers'))
       ]);
-      
-      if (categoriesResponse.ok) {
-        categories = await categoriesResponse.json();
-        console.log('Categories loaded:', categories.length);
-      } else {
-        console.warn("Categories failed to load, but continuing...");
-        categories = [];
-      }
 
-      if (suppliersResponse.ok) {
-        suppliers = await suppliersResponse.json();
-        console.log('Suppliers loaded:', suppliers.length);
-      } else {
-        console.warn("Suppliers failed to load, but continuing...");
-        suppliers = [];
-      }
-      
-      if (productsResponse.ok) {
-        const rawProducts = await productsResponse.json();
-        products = rawProducts.map(product => ({
-          ...product,
-          price: parseFloat(product.price) || 0,
-          stock: parseInt(product.stock) || 0,
-          tax_percentage: parseFloat(product.tax_percentage) || 0,
-          category: categories.find(c => c.id === product.category_id) || null,
-          supplier: suppliers.find(s => s.id === product.supplier_id) || null
-        }));
-        console.log('Products loaded and processed:', products.length);
-      } else {
-        const errorData = await productsResponse.json();
-        throw new Error(errorData.message || "Gagal memuat data produk");
-      }
+      categories = categoriesResult.status === 'fulfilled' ? categoriesResult.value : [];
+      suppliers = suppliersResult.status === 'fulfilled' ? suppliersResult.value : [];
+
+      if (productsResult.status === 'rejected') throw productsResult.reason;
+
+      products = productsResult.value.map(product => ({
+        ...product,
+        price: parseFloat(product.price) || 0,
+        stock: parseInt(product.stock) || 0,
+        tax_percentage: parseFloat(product.tax_percentage) || 0,
+        category: categories.find(c => c.id === product.category_id) || null,
+        supplier: suppliers.find(s => s.id === product.supplier_id) || null
+      }));
       
       isLoading = false;
     } catch (err) {
@@ -152,7 +111,6 @@
     }
   });
 
-  $: totalPages = Math.ceil(sortedProducts.length / itemsPerPage);
   $: paginatedProducts = sortedProducts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   function toggleSort(field: string) {
@@ -292,160 +250,6 @@
       </div>
     </div>
   {:else}
-    <div class="bg-card rounded-lg shadow border border-border overflow-hidden">
-      <ScrollArea class="h-[calc(100vh-350px)]" orientation="both">
-        <div class="min-w-[1100px] p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead class="cursor-pointer w-[200px] text-center" on:click={() => toggleSort('name')}>
-                  <div class="flex items-center justify-center">
-                    Produk
-                    <IconWrapper 
-                      icon={sortField === 'name' ? (sortDirection === 'asc' ? SortAsc : SortDesc) : ArrowUpDown} 
-                      className="ml-2 h-4 w-4" 
-                    />
-                  </div>
-                </TableHead>
-                <TableHead class="cursor-pointer w-[140px] text-center" on:click={() => toggleSort('category_name')}>
-                  <div class="flex items-center justify-center">
-                    Kategori
-                    <IconWrapper 
-                      icon={sortField === 'category_name' ? (sortDirection === 'asc' ? SortAsc : SortDesc) : ArrowUpDown} 
-                      className="ml-2 h-4 w-4" 
-                    />
-                  </div>
-                </TableHead>
-                <TableHead class="cursor-pointer w-[120px] text-center" on:click={() => toggleSort('supplier_name')}>
-                  <div class="flex items-center justify-center">
-                    Supplier
-                    <IconWrapper 
-                      icon={sortField === 'supplier_name' ? (sortDirection === 'asc' ? SortAsc : SortDesc) : ArrowUpDown} 
-                      className="ml-2 h-4 w-4" 
-                    />
-                  </div>
-                </TableHead>
-                <TableHead class="cursor-pointer w-[120px] text-center" on:click={() => toggleSort('price')}>
-                  <div class="flex items-center justify-center">
-                    Harga
-                    <IconWrapper 
-                      icon={sortField === 'price' ? (sortDirection === 'asc' ? SortAsc : SortDesc) : ArrowUpDown} 
-                      className="ml-2 h-4 w-4" 
-                    />
-                  </div>
-                </TableHead>
-                <TableHead class="cursor-pointer w-[100px] text-center" on:click={() => toggleSort('stock')}>
-                  <div class="flex items-center justify-center">
-                    Stok
-                    <IconWrapper 
-                      icon={sortField === 'stock' ? (sortDirection === 'asc' ? SortAsc : SortDesc) : ArrowUpDown} 
-                      className="ml-2 h-4 w-4" 
-                    />
-                  </div>
-                </TableHead>
-                <TableHead class="w-[100px] text-center">Pajak</TableHead>
-                <TableHead class="w-[100px] text-center">Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {#each paginatedProducts as product (product.id)}
-                <TableRow>
-                  <TableCell class="w-[200px] text-center">
-                    <div class="flex items-center justify-center">
-                      {#if product.image_url}
-                        <img src={product.image_url} alt={product.name} class="w-10 h-10 object-cover rounded mr-2" />
-                      {:else}
-                        <div class="w-10 h-10 bg-muted rounded mr-2 flex items-center justify-center">
-                          <IconWrapper icon={Package} className="h-5 w-5 text-muted-foreground" />
-                        </div>
-                      {/if}
-                      <div class="min-w-0">
-                        <div class="font-medium truncate text-sm">{product.name}</div>
-                        {#if product.description}
-                          <div class="text-xs text-muted-foreground truncate">{product.description}</div>
-                        {/if}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell class="w-[140px] text-center">
-                    {#if product.category}
-                      <span class="flex items-center justify-center">
-                        <IconWrapper 
-                          icon={getCategoryIcon(product.category.name)} 
-                          className="h-4 w-4 mr-1 text-primary" 
-                        />
-                        {product.category.name}
-                      </span>
-                    {:else}
-                      <span class="text-gray-400">-</span>
-                    {/if}
-                  </TableCell>
-                  <TableCell class="w-[120px] text-center">
-                    {#if product.supplier}
-                      <div class="flex items-center justify-center">
-                        <IconWrapper icon={Users} className="h-4 w-4 mr-1 text-primary" />
-                        <span class="text-sm">{product.supplier.name}</span>
-                      </div>
-                    {:else}
-                      <span class="text-muted-foreground">-</span>
-                    {/if}
-                  </TableCell>
-                  <TableCell class="w-[120px] text-center">
-                    <span class="font-semibold text-primary">{formatCurrency(product.price)}</span>
-                  </TableCell>
-                  <TableCell class="w-[100px] text-center">
-                    <Badge variant={product.stock > 0 ? "default" : "destructive"} class="text-center">
-                      {product.stock}
-                    </Badge>
-                  </TableCell>
-                  <TableCell class="w-[100px] text-center">
-                    {#if product.tax_percentage > 0}
-                      <div class="flex items-center justify-center text-primary">
-                        <IconWrapper icon={Percent} className="h-4 w-4 mr-1" />
-                        <span class="text-sm">{product.tax_percentage}%</span>
-                      </div>
-                    {:else}
-                      <span class="text-muted-foreground">-</span>
-                    {/if}
-                  </TableCell>
-                  <TableCell class="w-[100px] text-center">
-                    <div class="flex items-center justify-center">
-                      <IconWrapper 
-                        icon={product.is_active ? Power : PowerOff} 
-                        className="h-4 w-4 mr-1 {product.is_active ? 'text-primary' : 'text-destructive'}" 
-                      />
-                      <span class="text-sm {product.is_active ? 'text-primary' : 'text-destructive'}">
-                        {product.is_active ? 'Aktif' : 'Nonaktif'}
-                      </span>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              {/each}
-            </TableBody>
-          </Table>
-
-          {#if filteredProducts.length === 0}
-            <div class="text-center py-12">
-              <IconWrapper icon={Package} className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-              <h3 class="text-lg font-medium mb-2">Tidak ada produk</h3>
-              <p class="text-muted-foreground">
-                {searchTerm || categoryFilter || stockFilter !== "all" 
-                  ? "Tidak ada produk yang sesuai dengan filter Anda" 
-                  : "Belum ada produk yang ditambahkan"}
-              </p>
-            </div>
-          {/if}
-        </div>
-      </ScrollArea>
-      
-      <Pagination 
-        {currentPage}
-        totalItems={filteredProducts.length}
-        {itemsPerPage}
-        onPageChange={handlePageChange}
-        onItemsPerPageChange={handleItemsPerPageChange}
-      />
-    </div>
+    <CashierProductTable products={paginatedProducts} totalItems={filteredProducts.length} {currentPage} {itemsPerPage} {sortField} {sortDirection} hasFilters={Boolean(searchTerm || categoryFilter || stockFilter !== "all")} onSort={toggleSort} onPageChange={handlePageChange} onItemsPerPageChange={handleItemsPerPageChange} />
   {/if}
 </div>
-

@@ -184,7 +184,6 @@ router.put("/:id", authenticateToken, authorizeRole(["superadmin"]), async (req,
       name, 
       description, 
       price, 
-      stock, 
       category_id, 
       supplier_id,
       tax_percentage, 
@@ -193,7 +192,7 @@ router.put("/:id", authenticateToken, authorizeRole(["superadmin"]), async (req,
       public_id
     } = req.body;
 
-    if (!name || !price || stock === undefined || !category_id) {
+    if (!name || !price || !category_id) {
       return res.status(400).json({ message: "Data produk tidak lengkap" });
     }
 
@@ -210,11 +209,11 @@ router.put("/:id", authenticateToken, authorizeRole(["superadmin"]), async (req,
 
     const [result] = await connection.query(
       `UPDATE products 
-       SET name = ?, description = ?, price = ?, stock = ?, category_id = ?, supplier_id = ?,
+       SET name = ?, description = ?, price = ?, category_id = ?, supplier_id = ?,
            tax_percentage = ?, tax_description = ?, 
            image_url = ?, cloudinary_public_id = ?, updated_at = NOW()
        WHERE id = ?`,
-      [name, description, price, stock, category_id, supplier_id, tax_percentage || 0, tax_description, image_url, public_id, productId]
+      [name, description, price, category_id, supplier_id, tax_percentage || 0, tax_description, image_url, public_id, productId]
     );
     
     connection.release();
@@ -222,6 +221,57 @@ router.put("/:id", authenticateToken, authorizeRole(["superadmin"]), async (req,
   } catch (error) {
     console.error("Error updating product:", error);
     res.status(500).json({ message: "Server error updating product" });
+  }
+});
+
+router.patch("/:id/add-stock", authenticateToken, authorizeRole(["superadmin"]), async (req, res) => {
+  const quantity = Number(req.body.quantity);
+
+  if (!Number.isInteger(quantity) || quantity <= 0) {
+    return res.status(400).json({ message: "Jumlah stok tambahan harus berupa bilangan bulat lebih dari 0" });
+  }
+
+  let connection;
+
+  try {
+    connection = await pool.getConnection();
+
+    const [products] = await connection.query(
+      `SELECT p.name, p.stock, c.is_reseller
+       FROM products p
+       LEFT JOIN categories c ON p.category_id = c.id
+       WHERE p.id = ?`,
+      [req.params.id]
+    );
+
+    if (products.length === 0) {
+      return res.status(404).json({ message: "Produk tidak ditemukan" });
+    }
+
+    if (products[0].is_reseller) {
+      return res.status(400).json({ message: "Stok produk PUBJ hanya dapat ditambahkan melalui Stok Harian PUBJ" });
+    }
+
+    await connection.query(
+      "UPDATE products SET stock = stock + ?, updated_at = NOW() WHERE id = ?",
+      [quantity, req.params.id]
+    );
+
+    const [[updatedProduct]] = await connection.query(
+      "SELECT stock FROM products WHERE id = ?",
+      [req.params.id]
+    );
+
+    res.json({
+      message: `Stok produk "${products[0].name}" berhasil ditambah ${quantity}`,
+      added_stock: quantity,
+      stock: Number(updatedProduct.stock)
+    });
+  } catch (error) {
+    console.error("Error adding product stock:", error);
+    res.status(500).json({ message: "Server error saat menambah stok produk" });
+  } finally {
+    if (connection) connection.release();
   }
 });
 

@@ -1,17 +1,11 @@
 <script lang="ts">
   import { Button } from "$lib/components/ui/button";
-  import { Input } from "$lib/components/ui/input";
   import { ScrollArea } from "$lib/components/ui/scroll-area";
   import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "$lib/components/ui/table";
-  import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "$lib/components/ui/dialog";
-  import { Label } from "$lib/components/ui/label";
-  import { Alert, AlertDescription, AlertTitle } from "$lib/components/ui/alert";
-  import { Badge } from "$lib/components/ui/badge";
-  import { Switch } from "$lib/components/ui/switch";
-  import { PlusCircle, Edit, Trash2, Package, Store, Users, Search, Filter, SortAsc, SortDesc, ArrowUpDown, UtensilsCrossed, Coffee, Truck } from "lucide-svelte";
+  import { PlusCircle, Edit, Trash2, Package, Store, Users, SortAsc, SortDesc, ArrowUpDown, UtensilsCrossed, Coffee, Truck } from "lucide-svelte";
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
-  import { BACKEND_URL, getAuthHeaders } from "$lib/apiConfig";
+  import { api, apiData } from "$lib/apiConfig";
   import { browser } from '$app/environment';
   import IconWrapper from "$lib/components/IconWrapper.svelte";
   import RowActions from "$lib/components/RowActions.svelte";
@@ -19,6 +13,9 @@
   import Pagination from "$lib/components/Pagination.svelte";
   import AlertMessage from "$lib/components/AlertMessage.svelte";
   import { useAlert } from "$lib/composables/useAlert";
+  import CategoryFormDialog from '$lib/components/categories/CategoryFormDialog.svelte';
+  import ListFilters from '$lib/components/ListFilters.svelte';
+  import { filterAndSortCategories } from '$lib/utils/managementLists';
 
   let categories = [];
   let isLoading = true;
@@ -64,16 +61,7 @@
       }
       
       
-      const response = await fetch(`${BACKEND_URL}/api/categories`, {
-        headers: getAuthHeaders()
-      });
-      
-      if (response.ok) {
-        categories = await response.json();
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Gagal memuat data kategori");
-      }
+      categories = await apiData(api.get('/api/categories'));
     } catch (err) {
       console.error("Error loading categories:", err);
       error = err.message;
@@ -115,36 +103,15 @@
         is_reseller: currentCategory.is_reseller
       };
       
-      let response;
-      
       if (editingCategory) {
-        response = await fetch(`${BACKEND_URL}/api/categories/${editingCategory.id}`, {
-          method: 'PUT',
-          headers: {
-            ...getAuthHeaders(),
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(categoryData)
-        });
+        await apiData(api.put(`/api/categories/${editingCategory.id}`, categoryData));
       } else {
-        response = await fetch(`${BACKEND_URL}/api/categories`, {
-          method: 'POST',
-          headers: {
-            ...getAuthHeaders(),
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(categoryData)
-        });
+        await apiData(api.post('/api/categories', categoryData));
       }
-      
-      if (response.ok) {
-        await loadCategories();
-        showAddEditDialog = false;
-        showAlertMessage('success', editingCategory ? "Kategori berhasil diperbarui." : "Kategori baru berhasil ditambahkan.");
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Gagal menyimpan kategori.");
-      }
+
+      await loadCategories();
+      showAddEditDialog = false;
+      showAlertMessage('success', editingCategory ? "Kategori berhasil diperbarui." : "Kategori baru berhasil ditambahkan.");
     } catch (err) {
       console.error("Error saving category:", err);
       showAlertMessage('error', `Error: ${err.message}`);
@@ -155,51 +122,16 @@
     try {
       showAlertMessage('info', "Menghapus kategori...");
       
-      const response = await fetch(`${BACKEND_URL}/api/categories/${categoryId}`, {
-        method: 'DELETE',
-        headers: getAuthHeaders()
-      });
-      
-      if (response.ok) {
-        await loadCategories();
-        showAlertMessage('success', "Kategori berhasil dihapus.");
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Gagal menghapus kategori.");
-      }
+      await apiData(api.delete(`/api/categories/${categoryId}`));
+      await loadCategories();
+      showAlertMessage('success', "Kategori berhasil dihapus.");
     } catch (err) {
       console.error("Error deleting category:", err);
       showAlertMessage('error', `Error: ${err.message}`);
     }
   }
 
-  $: filteredCategories = categories
-    .filter(c => {
-      const matchesSearch = 
-        c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (c.description && c.description.toLowerCase().includes(searchTerm.toLowerCase()));
-      
-      const matchesType = !typeFilter || 
-        (typeFilter === "toko" && !c.is_reseller) ||
-        (typeFilter === "pubj" && c.is_reseller);
-      
-      return matchesSearch && matchesType;
-    })
-    .sort((a, b) => {
-      let aValue = a[sortField] || '';
-      let bValue = b[sortField] || '';
-      
-      if (typeof aValue === 'string') {
-        aValue = aValue.toLowerCase();
-        bValue = bValue.toLowerCase();
-      }
-      
-      if (sortDirection === 'asc') {
-        return aValue > bValue ? 1 : -1;
-      } else {
-        return aValue < bValue ? 1 : -1;
-      }
-    });
+  $: filteredCategories = filterAndSortCategories(categories, searchTerm, typeFilter, sortField, sortDirection);
 
   $: paginatedCategories = (() => {
     if (itemsPerPage >= filteredCategories.length) {
@@ -251,68 +183,7 @@
 
   <AlertMessage />
 
-  <div class="bg-card rounded-lg shadow p-4 max-w-full">
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-      <div class="flex items-center gap-2 min-w-0">
-        <IconWrapper icon={Search} className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-        <Input 
-          type="text" 
-          placeholder="Cari kategori..." 
-          bind:value={searchTerm}
-          class="min-w-0"
-        />
-      </div>
-      
-      <div>
-        <select 
-          bind:value={typeFilter}
-          class="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-w-0"
-        >
-          <option value="">Semua Tipe</option>
-          <option value="toko">Toko</option>
-          <option value="pubj">PUBJ (Penitipan)</option>
-        </select>
-      </div>
-      
-      <div class="flex gap-2 min-w-0">
-        <Button 
-          variant="outline" 
-          on:click={clearFilters} 
-          size="sm" 
-          class="flex-shrink-0"
-        >
-          <IconWrapper icon={Filter} className="mr-2 h-4 w-4" />
-          Reset Filter
-        </Button>
-      </div>
-    </div>
-    
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-sm text-muted-foreground">
-      <span class="flex-shrink-0">Menampilkan {filteredCategories.length} dari {categories.length} kategori</span>
-      <div class="flex items-center gap-2 flex-shrink-0">
-        <span class="hidden sm:inline">Urutkan:</span>
-        <select 
-          bind:value={sortField}
-          class="px-2 py-1 border rounded text-sm bg-background min-w-0"
-        >
-          <option value="name">Nama</option>
-          <option value="is_reseller">Tipe</option>
-          <option value="created_at">Tanggal Dibuat</option>
-        </select>
-        <Button 
-          variant="outline" 
-          size="sm"
-          on:click={() => toggleSort(sortField)}
-          class="flex-shrink-0"
-        >
-          <IconWrapper 
-            icon={sortDirection === 'asc' ? SortAsc : SortDesc} 
-            className="h-4 w-4" 
-          />
-        </Button>
-      </div>
-    </div>
-  </div>
+  <ListFilters bind:searchTerm bind:secondaryValue={typeFilter} bind:sortField {sortDirection} searchPlaceholder="Cari kategori..." secondaryOptions={[{ value: '', label: 'Semua Tipe' }, { value: 'toko', label: 'Toko' }, { value: 'pubj', label: 'PUBJ (Penitipan)' }]} sortOptions={[{ value: 'name', label: 'Nama' }, { value: 'is_reseller', label: 'Tipe' }, { value: 'created_at', label: 'Tanggal Dibuat' }]} filteredCount={filteredCategories.length} totalCount={categories.length} itemLabel="kategori" onClear={clearFilters} onSort={toggleSort} />
 
   {#if isLoading}
     <div class="bg-card p-8 rounded-lg shadow flex justify-center">
@@ -411,57 +282,4 @@
   {/if}
 </div>
 
-{#if showAddEditDialog}
-  <Dialog open={showAddEditDialog} onOpenChange={(open) => { if (!open) showAddEditDialog = false; }}>
-    <DialogContent class="sm:max-w-[500px]">
-      <DialogHeader>
-        <DialogTitle>{editingCategory ? "Edit Kategori" : "Tambah Kategori Baru"}</DialogTitle>
-        <DialogDescription>
-          {editingCategory ? "Ubah detail kategori di bawah ini." : "Isi detail untuk kategori baru."}
-        </DialogDescription>
-      </DialogHeader>
-      <div class="grid gap-4 py-4">
-        <div class="grid grid-cols-4 items-center gap-4">
-          <Label for="name" class="text-right">Nama</Label>
-          <Input id="name" bind:value={currentCategory.name} class="col-span-3" placeholder="Nama kategori" />
-        </div>
-        
-        <div class="grid grid-cols-4 items-center gap-4">
-          <Label for="description" class="text-right">Deskripsi</Label>
-          <textarea 
-            id="description" 
-            bind:value={currentCategory.description} 
-            class="col-span-3 flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" 
-            placeholder="Deskripsi kategori (opsional)..."
-          ></textarea>
-        </div>
-        
-        <div class="grid grid-cols-4 items-center gap-4">
-          <Label for="is_reseller" class="text-right">Jenis Kategori</Label>
-          <div class="col-span-3 flex items-center space-x-2">
-            <Switch id="is_reseller" bind:checked={currentCategory.is_reseller} />
-            <Label for="is_reseller" class="text-sm">
-              {currentCategory.is_reseller ? 'Penitipan/Reseller (PUBJ)' : 'Produk Toko'}
-            </Label>
-          </div>
-        </div>
-        
-        {#if currentCategory.is_reseller}
-          <div class="bg-muted p-4 rounded-lg">
-            <p class="text-sm text-foreground mb-2">
-              <strong>Info PUBJ:</strong> Pajak akan ditentukan per produk saat menambah/edit produk dalam kategori ini.
-            </p>
-            <p class="text-xs text-primary">
-              Contoh: Risol 10%, Tahu Isi 15%, Martabak 12%
-            </p>
-          </div>
-        {/if}
-      </div>
-      <DialogFooter>
-        <Button variant="outline" on:click={() => showAddEditDialog = false}>Batal</Button>
-        <Button on:click={handleSaveCategory}>Simpan</Button>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
-{/if}
-
+<CategoryFormDialog open={showAddEditDialog} category={currentCategory} isEditing={Boolean(editingCategory)} onClose={() => showAddEditDialog = false} onSave={handleSaveCategory} />
