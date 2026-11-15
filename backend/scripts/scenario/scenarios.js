@@ -144,10 +144,11 @@ module.exports = [
     group: "Penjualan",
     title: "Jumlah barang 0, negatif, dan pecahan",
     steps: ["Checkout Bakwan qty 0", "Checkout Bakwan qty -5", "Checkout Bakwan qty 1.5"],
-    expected: "Status 400 untuk ketiganya, stok tidak berubah",
+    expected: "Status 400 untuk ketiganya, stok tidak berubah, tidak ada baris sales baru",
     screen: null,
     async run(ctx) {
       const before = await ctx.product("Bakwan");
+      const [{ count: salesBefore }] = await ctx.sql("SELECT count(*)::int AS count FROM sales");
       const statuses = [];
       const responses = [];
       for (const quantity of [0, -5, 1.5]) {
@@ -156,9 +157,10 @@ module.exports = [
         responses.push({ quantity, status: res.status, body: res.body });
       }
       const after = await ctx.product("Bakwan");
-      ctx.actual(`Status ${statuses.join("/")}, stok ${before.stock} jadi ${after.stock}`);
+      const [{ count: salesAfter }] = await ctx.sql("SELECT count(*)::int AS count FROM sales");
+      ctx.actual(`Status ${statuses.join("/")}, stok ${before.stock} jadi ${after.stock}, jumlah sales ${salesBefore} jadi ${salesAfter}`);
       ctx.evidence({ request: { product: "Bakwan", quantities: [0, -5, 1.5] }, response: responses });
-      ctx.expect(statuses.every((status) => status === 400) && after.stock === before.stock);
+      ctx.expect(statuses.every((status) => status === 400) && after.stock === before.stock && salesAfter === salesBefore);
     }
   },
   {
@@ -294,14 +296,16 @@ module.exports = [
         image_url: product.image_url,
         image_filename: product.image_filename
       });
+      const stored = await ctx.product("Lemper");
       const complete = await ctx.as("superadmin").patch(`/api/daily-stock/${entryId}/complete`);
       const entry = await dailyEntry(ctx, entryId);
       const oldRevenue = Number(product.price) * 2;
       ctx.actual(
-        `Jual ${sale.status}, ubah harga ${update.status} (${product.price} jadi ${newPrice}), selesaikan ${complete.status}, ` +
+        `Jual ${sale.status}, ubah harga ${update.status} (${product.price} jadi ${newPrice}, tersimpan ${stored.price}), selesaikan ${complete.status}, ` +
         `status entry ${entry.status}, revenue entry ${entry.total_revenue}`
       );
       ctx.expect(sale.status === 201 && update.status === 200 && complete.status === 200, "langkah gagal");
+      ctx.expect(money(stored.price) === money(newPrice), "harga baru tidak tersimpan");
       ctx.expect(entry.status === "completed" && money(entry.total_revenue) === money(oldRevenue), "revenue entry berubah");
     }
   },
@@ -509,7 +513,7 @@ module.exports = [
     group: "Laporan",
     title: "Laba toko dashboard vs laporan transaksi",
     steps: ["Superadmin buka dashboard", "Superadmin buka laporan transaksi", "Bandingkan laba toko total"],
-    expected: "totalStats.storeProfit = jumlah keuntungan_toko di laporan transaksi",
+    expected: "totalStats.storeProfit = jumlah keuntungan_toko di laporan transaksi = hitungan K1 langsung dari tabel",
     screen: { page: "/superadmin/revenue", as: "superadmin" },
     async run(ctx) {
       const dashboard = await ctx.as("superadmin").get("/api/dashboard");
@@ -517,9 +521,21 @@ module.exports = [
       const rows = Array.isArray(transactions.body) ? transactions.body : [];
       const reportSum = rows.reduce((sum, row) => sum + money(row.keuntungan_toko || 0), 0);
       const dashboardProfit = money(dashboard.body?.totalStats?.storeProfit);
-      ctx.actual(`Dashboard ${dashboardProfit / 100}, laporan transaksi ${reportSum / 100} (${rows.length} baris)`);
-      ctx.evidence({ dashboardTotalStats: dashboard.body?.totalStats, transactionRows: rows.length, transactionProfitSum: reportSum / 100 });
-      ctx.expect(dashboard.status === 200 && transactions.status === 200 && rows.length > 0 && dashboardProfit === reportSum);
+      const [oracle] = await ctx.sql(`
+        SELECT
+          (SELECT COALESCE(SUM(si.quantity * si.price_at_sale), 0)
+           FROM sale_items si
+           WHERE NOT EXISTS (
+             SELECT 1 FROM sale_taxes stx
+             WHERE stx.sale_id = si.sale_id AND stx.product_id IS NOT DISTINCT FROM si.product_id
+           )) AS toko,
+          (SELECT COALESCE(SUM(store_profit), 0) FROM sale_taxes) AS pubj
+      `);
+      const oracleProfit = money(oracle.toko) + money(oracle.pubj);
+      ctx.actual(`Dashboard ${dashboardProfit / 100}, laporan transaksi ${reportSum / 100} (${rows.length} baris), hitungan K1 dari tabel ${oracleProfit / 100}`);
+      ctx.evidence({ dashboardTotalStats: dashboard.body?.totalStats, transactionRows: rows.length, transactionProfitSum: reportSum / 100, oracle: { tokoRevenue: oracle.toko, pubjStoreProfit: oracle.pubj, total: oracleProfit / 100 } });
+      ctx.expect(dashboard.status === 200 && transactions.status === 200 && rows.length > 0 && dashboardProfit === reportSum, "dashboard tidak sama dengan laporan transaksi");
+      ctx.expect(dashboardProfit === oracleProfit, "laba toko tidak sama dengan hitungan K1 dari tabel");
     }
   },
   {

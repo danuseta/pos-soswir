@@ -29,7 +29,7 @@ async function startTestServer() {
   const child = spawn(process.execPath, ["index.js"], {
     cwd: path.join(__dirname, "..", ".."),
     env: { ...process.env, DB_NAME: "pos_test", PORT: String(PORT), NODE_ENV: "test" },
-    stdio: "ignore"
+    stdio: ["ignore", "ignore", "inherit"]
   });
 
   let ready = false;
@@ -60,6 +60,7 @@ async function startTestServer() {
     },
     async stop() {
       await new Promise((resolve) => {
+        if (child.exitCode !== null || child.signalCode !== null) return resolve();
         child.once("exit", resolve);
         child.kill();
       });

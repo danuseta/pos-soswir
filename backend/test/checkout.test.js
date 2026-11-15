@@ -72,6 +72,7 @@ test("checkout menunggu lock baris, lalu ditolak karena stok habis (bukan CHECK)
   const id = await product("Terakhir", 5000, 1);
   const holder = await pool.connect();
   let blocked;
+  let committed = false;
   try {
     await holder.query("BEGIN");
     await holder.query("UPDATE products SET stock = 0 WHERE id = $1", [id]);
@@ -79,12 +80,17 @@ test("checkout menunggu lock baris, lalu ditolak karena stok habis (bukan CHECK)
       (value) => ({ status: "fulfilled", value }),
       (reason) => ({ status: "rejected", reason })
     );
-    for (;;) {
+    let isBlocked = false;
+    for (let i = 0; i < 200 && !isBlocked; i += 1) {
       const waiting = await query("SELECT 1 FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND datname = current_database()");
-      if (waiting.length > 0) break;
+      isBlocked = waiting.length > 0;
+      if (!isBlocked) await new Promise((r) => setTimeout(r, 25));
     }
+    if (!isBlocked) throw new Error("sell() never blocked");
     await holder.query("COMMIT");
+    committed = true;
   } finally {
+    if (!committed) await holder.query("ROLLBACK").catch(() => {});
     holder.release();
   }
   const result = await blocked;

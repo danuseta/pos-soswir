@@ -445,14 +445,23 @@ async function main() {
     if (reportPaths) console.log(`Laporan HTML: ${reportPaths.report}\nSalinan terbaru: ${reportPaths.latest}`);
     if (results.scenarios.some((s) => s.status !== "pass")) process.exitCode = 1;
   } finally {
-    killTree(frontend);
-    killTree(backend);
-    if (pool) await pool.end();
-    if (!keepDb) {
-      await dropDatabase();
-      for (const file of fs.readdirSync(UPLOAD_DIR)) {
-        if (!uploadsBefore.has(file)) fs.rmSync(path.join(UPLOAD_DIR, file), { force: true });
+    const cleanup = async (name, fn) => {
+      try {
+        await fn();
+      } catch (error) {
+        console.error(`Cleanup "${name}" gagal:`, error);
       }
+    };
+    await cleanup("frontend", () => killTree(frontend));
+    await cleanup("backend", () => killTree(backend));
+    if (pool) await cleanup("pool.end", () => pool.end());
+    if (!keepDb) {
+      await cleanup("drop database", () => dropDatabase());
+      await cleanup("uploads", () => {
+        for (const file of fs.readdirSync(UPLOAD_DIR)) {
+          if (!uploadsBefore.has(file)) fs.rmSync(path.join(UPLOAD_DIR, file), { force: true });
+        }
+      });
     }
   }
 }

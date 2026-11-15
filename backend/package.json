@@ -10,7 +10,7 @@
     "dev": "nodemon index.js",
     "db:init": "node db/init.js",
     "db:migrate-mysql": "node db/migrate-from-mysql.js",
-    "test": "node --test --test-concurrency=1",
+    "test": "node --test --test-concurrency=1 \"test/*.test.js\" \"utils/*.test.js\"",
     "scenario": "node scripts/scenario/run.js",
     "prod:start": "cross-env NODE_ENV=production pm2 start ecosystem.config.js --env production",
     "prod:stop": "pm2 stop soswir-pos-backend",
@@ -72,7 +72,7 @@
     "pm2": "^5.4.3"
   },
   "engines": {
-    "node": ">=18.0.0",
+    "node": ">=20.10.0",
     "npm": ">=8.0.0"
   },
   "pm2": {
