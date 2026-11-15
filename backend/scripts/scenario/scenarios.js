@@ -58,7 +58,7 @@ module.exports = [
     title: "Kasir login di luar jam shift",
     steps: ["kasir_luar ditempatkan di Shift B yang tidak mencakup jam sekarang", "kasir_luar login"],
     expected: "Status 403 dengan code OUT_OF_SHIFT",
-    screen: { page: "/login", as: "kasir_luar" },
+    screen: { page: "/login", as: "kasir_luar", highlight: "[role=\"alert\"]" },
     async run(ctx) {
       const res = await ctx.login("kasir_luar");
       const [start, end] = ctx.fixture.shifts.B.window;
@@ -72,7 +72,7 @@ module.exports = [
     title: "Beli 1 barang toko",
     steps: ["Kasir login", "Tambah Nasi Goreng x1", "Checkout tunai"],
     expected: "Status 201, total 15.000, stok 10 jadi 9",
-    screen: { page: "/cashier/pos", as: "kasir1" },
+    screen: { page: "/cashier/pos", as: "kasir1", highlight: ".bg-card:has(> div.relative > img[alt=\"Nasi Goreng\"])" },
     async run(ctx) {
       const before = await ctx.product("Nasi Goreng");
       const res = await sell(ctx, "kasir1", [{ product_id: before.id, quantity: 1, price: Number(before.price) }]);
@@ -91,7 +91,7 @@ module.exports = [
       "Cek total, stok, dan item penjualan"
     ],
     expected: "Status 201, total = jumlah harga DB (69.000), stok berkurang 2/1/5, Mie Ayam jadi satu baris qty 2",
-    screen: { page: "/cashier/transactions", as: "kasir1" },
+    screen: { page: "/cashier/transactions", as: "kasir1", highlight: "tr:has-text(\"Mie Ayam\")" },
     async run(ctx) {
       const names = ["Mie Ayam", "Es Teh", "Kopi Susu"];
       const before = {};
@@ -128,7 +128,7 @@ module.exports = [
     title: "Beli melebihi stok",
     steps: ["Roti Bakar stok 3", "Kasir checkout Roti Bakar x5"],
     expected: "Status 400, stok tetap 3, tidak ada baris sales baru",
-    screen: { page: "/cashier/pos", as: "kasir1" },
+    screen: { page: "/cashier/pos", as: "kasir1", highlight: ".bg-card:has(> div.relative > img[alt=\"Roti Bakar\"])" },
     async run(ctx) {
       const before = await ctx.product("Roti Bakar");
       const [{ count: salesBefore }] = await ctx.sql("SELECT count(*)::int AS count FROM sales");
@@ -167,7 +167,7 @@ module.exports = [
     title: "Harga dimanipulasi client",
     steps: ["Kirim checkout Soto Ayam x2 dengan price: 1"],
     expected: "Status 201, total memakai harga DB (36.000), bukan 2",
-    screen: { page: "/cashier/transactions", as: "kasir1" },
+    screen: { page: "/cashier/transactions", as: "kasir1", highlight: "tr:has-text(\"Soto Ayam\")" },
     async run(ctx) {
       const product = await ctx.product("Soto Ayam");
       const res = await sell(ctx, "kasir1", [{ product_id: product.id, quantity: 2, price: 1 }]);
@@ -220,7 +220,7 @@ module.exports = [
     title: "Stok harian masuk 20, jual 4",
     steps: ["Superadmin input stok harian Kue Lapis 20", "Kasir jual Kue Lapis x4", "Cek katalog, sale_taxes, dan entry"],
     expected: "Stok katalog 16, fee sale_taxes = persentase entry (10% = 2.000), revenue entry 4 x harga = 20.000",
-    screen: { page: "/superadmin/daily-stock", as: "superadmin" },
+    screen: { page: "/superadmin/daily-stock", as: "superadmin", highlight: "tr:has-text(\"Kue Lapis\")" },
     async run(ctx) {
       const product = await ctx.product("Kue Lapis");
       const entryId = await addDailyStock(ctx, product, 20);
@@ -263,7 +263,7 @@ module.exports = [
     title: "Jual PUBJ tanpa entry hari ini",
     steps: ["Risoles belum punya stok harian hari ini", "Kasir checkout Risoles x1"],
     expected: "Status 400 \"belum ada stok hari ini\"",
-    screen: { page: "/cashier/pos", as: "kasir1" },
+    screen: { page: "/cashier/pos", as: "kasir1", highlight: ".bg-card:has(> div.relative > img[alt=\"Risoles\"])" },
     async run(ctx) {
       const product = await ctx.product("Risoles");
       const res = await sell(ctx, "kasir1", [{ product_id: product.id, quantity: 1 }]);
@@ -277,7 +277,7 @@ module.exports = [
     title: "Harga naik setelah terjual, lalu entry diselesaikan",
     steps: ["Stok harian Lemper 10", "Kasir jual Lemper x2", "Superadmin menaikkan harga Lemper", "Superadmin menyelesaikan entry"],
     expected: "Revenue entry tetap 2 x harga lama (12.000)",
-    screen: { page: "/superadmin/daily-stock", as: "superadmin" },
+    screen: { page: "/superadmin/daily-stock", as: "superadmin", highlight: "tr:has-text(\"Lemper\")" },
     async run(ctx) {
       const product = await ctx.product("Lemper");
       const entryId = await addDailyStock(ctx, product, 10);
@@ -311,7 +311,7 @@ module.exports = [
     title: "Tutup hari dengan entry aktif",
     steps: ["Stok harian Onde-onde 10", "Kasir jual Onde-onde x1", "Superadmin jalankan tutup hari (end-of-day)"],
     expected: "Status 200, entry jadi completed, stok katalog Onde-onde 0",
-    screen: { page: "/superadmin/daily-stock", as: "superadmin" },
+    screen: { page: "/superadmin/daily-stock", as: "superadmin", highlight: "tr:has-text(\"Onde-onde\")" },
     async run(ctx) {
       const product = await ctx.product("Onde-onde");
       const entryId = await addDailyStock(ctx, product, 10);
@@ -329,7 +329,7 @@ module.exports = [
     title: "Edit stok harian lebih kecil dari terjual",
     steps: ["Stok harian Pastel 10", "Kasir jual Pastel x5", "Ubah stok masuk jadi 3"],
     expected: "Status 400, stok masuk tetap 10",
-    screen: { page: "/superadmin/daily-stock", as: "superadmin" },
+    screen: { page: "/superadmin/daily-stock", as: "superadmin", highlight: "tr:has-text(\"Pastel\")" },
     async run(ctx) {
       const product = await ctx.product("Pastel");
       const entryId = await addDailyStock(ctx, product, 10);
@@ -346,7 +346,7 @@ module.exports = [
     title: "Tambah stok produk toko",
     steps: ["Air Mineral stok 5", "Superadmin tambah stok +10"],
     expected: "Stok jadi 15",
-    screen: { page: "/superadmin/products", as: "superadmin" },
+    screen: { page: "/superadmin/products", as: "superadmin", highlight: "tr:has-text(\"Air Mineral\")" },
     async run(ctx) {
       const before = await ctx.product("Air Mineral");
       const res = await ctx.as("superadmin").patch(`/api/products/${before.id}/add-stock`, { quantity: 10 });
@@ -361,7 +361,7 @@ module.exports = [
     title: "Upload gambar lokal dan tampil di katalog POS",
     steps: ["Superadmin upload kuning.png", "Buat produk Teh Kotak dengan gambar itu", "Ambil URL gambar", "Kasir buka katalog POS"],
     expected: "URL /uploads/products/... status 200 bertipe gambar, produk di katalog aktif memakai URL itu",
-    screen: { page: "/cashier/pos", as: "kasir1" },
+    screen: { page: "/cashier/pos", as: "kasir1", imageAlt: "Teh Kotak", highlight: ".bg-card:has(> div.relative > img[alt=\"Teh Kotak\"])" },
     async run(ctx) {
       const upload = await ctx.as("superadmin").upload("/api/products/upload-image", FIXTURE_IMAGE);
       if (upload.status !== 200) throw new Error(`Upload gagal: ${upload.status} ${JSON.stringify(upload.body)}`);
@@ -393,7 +393,7 @@ module.exports = [
     title: "Hard delete produk yang punya riwayat",
     steps: ["Kasir jual Gorengan Lama x1", "Superadmin hapus permanen Gorengan Lama dengan password"],
     expected: "Status 200, penjualan tetap ada dengan product_id null",
-    screen: { page: "/superadmin/transactions", as: "superadmin" },
+    screen: { page: "/superadmin/transactions", as: "superadmin", highlight: "tr:has-text(\"Gorengan Lama\")" },
     async run(ctx) {
       const product = await ctx.product("Gorengan Lama");
       const sale = await sell(ctx, "kasir1", [{ product_id: product.id, quantity: 1 }]);
@@ -418,7 +418,7 @@ module.exports = [
     title: "Hapus kasir yang punya transaksi",
     steps: ["Buat kasir_hapus di Shift A", "kasir_hapus jual Kerupuk x1", "Superadmin hapus kasir_hapus"],
     expected: "Status 409, kasir tetap ada",
-    screen: { page: "/superadmin/cashiers", as: "superadmin" },
+    screen: { page: "/superadmin/cashiers", as: "superadmin", highlight: "tr:has-text(\"kasir_hapus\")" },
     async run(ctx) {
       const created = await ctx.as("superadmin").post("/api/users/cashiers", { username: "kasir_hapus", password: "kasir123" });
       if (created.status !== 201) throw new Error(`Buat kasir gagal: ${created.status}`);
@@ -442,7 +442,7 @@ module.exports = [
       "Superadmin buka dashboard"
     ],
     expected: "todayStats tetap menghitung transaksi itu (jumlah dan omzet tidak turun setelah digeser)",
-    screen: { page: "/superadmin/dashboard", as: "superadmin" },
+    screen: { page: "/superadmin/dashboard", as: "superadmin", highlight: ".bg-card:has(> * > :text-is(\"Penjualan Hari Ini\"))" },
     async run(ctx) {
       const product = await ctx.product("Bubur Ayam");
       const sale = await sell(ctx, "kasir2", [{ product_id: product.id, quantity: 1 }]);
@@ -490,7 +490,7 @@ module.exports = [
     title: "Total supplier vs jumlah entry",
     steps: ["Superadmin buka daftar supplier", "Bandingkan total_revenue Bu Ani dengan jumlah revenue semua entry-nya"],
     expected: "total_revenue = jumlah revenue entry (tidak terkali jumlah produk)",
-    screen: { page: "/superadmin/suppliers", as: "superadmin" },
+    screen: { page: "/superadmin/suppliers", as: "superadmin", highlight: "tr:has-text(\"Bu Ani\")" },
     async run(ctx) {
       const res = await ctx.as("superadmin").get("/api/suppliers");
       const supplier = (res.body || []).find((s) => s.id === ctx.fixture.supplierId);

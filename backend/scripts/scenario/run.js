@@ -176,21 +176,19 @@ async function seed(pool) {
     .filter((file) => IMAGE_TYPES[path.extname(file).toLowerCase()])
     .sort()
     .map((file) => path.join(FIXTURE_DIR, file));
-  const images = [];
-  for (const file of imageFiles) {
-    const res = await uploadImage("superadmin", file);
-    if (res.status !== 200) throw new Error(`Seed gagal upload ${path.basename(file)}: ${res.status} ${JSON.stringify(res.body)}`);
-    images.push(res.body);
-  }
-
   const products = [
     ...SHOP_PRODUCTS.map(([name, category, price, stock]) => ({ name, price, stock, category_id: categories[category] })),
     ...PUBJ_PRODUCTS.map(([name, price]) => ({
       name, price, stock: 0, category_id: categories.PUBJ, supplier_id: supplierId, tax_percentage: 10
     }))
   ];
+  const images = [];
   for (const [index, product] of products.entries()) {
-    const image = images[index % images.length];
+    const file = imageFiles[index % imageFiles.length];
+    const res = await uploadImage("superadmin", file);
+    if (res.status !== 200) throw new Error(`Seed gagal upload ${path.basename(file)}: ${res.status} ${JSON.stringify(res.body)}`);
+    const image = res.body;
+    images.push(image);
     await must("POST", "/api/products", "superadmin", { ...product, image_url: image.imageUrl, image_filename: image.imageFilename });
   }
 
@@ -391,10 +389,11 @@ async function main() {
 
     if (!noScreens) {
       await assertPortFree(FRONTEND_URL);
+      const frontendLog = fs.openSync(path.join(outDir, "frontend.log"), "w");
       frontend = spawn("npm", ["run", "dev", "--", "--port", "5174", "--strictPort"], {
         cwd: FRONTEND_DIR,
         env: { ...process.env, VITE_BACKEND_URL: BACKEND_URL },
-        stdio: "ignore",
+        stdio: ["ignore", frontendLog, frontendLog],
         shell: process.platform === "win32"
       });
       await waitFor(`${FRONTEND_URL}/`, 60000, "Frontend");
@@ -421,6 +420,7 @@ async function main() {
     }
 
     const resultsPath = path.join(outDir, "results.json");
+    let reportPaths = null;
     fs.writeFileSync(resultsPath, JSON.stringify(results, null, 2));
 
     if (!noScreens) {
@@ -429,6 +429,7 @@ async function main() {
         results,
         outDir,
         frontendUrl: FRONTEND_URL,
+        passwordOf,
         loginAs: async (username) => {
           const session = await login(username);
           return { token: session.token, role: session.user.role, id: session.user.id, username };
@@ -436,11 +437,12 @@ async function main() {
       });
       fs.writeFileSync(resultsPath, JSON.stringify(results, null, 2));
       const { buildReport } = require("./report");
-      await buildReport({ resultsPath, outDir });
+      reportPaths = await buildReport({ resultsPath, outDir });
     }
 
     printSummary(results);
     console.log(`\nresults.json: ${resultsPath}`);
+    if (reportPaths) console.log(`Laporan HTML: ${reportPaths.report}\nSalinan terbaru: ${reportPaths.latest}`);
     if (results.scenarios.some((s) => s.status !== "pass")) process.exitCode = 1;
   } finally {
     killTree(frontend);
