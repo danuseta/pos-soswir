@@ -1,4 +1,4 @@
-const { pool } = require("../models/db");
+const { query } = require("../models/db");
 const { minutesNowInJakarta, isWithinWindow } = require("./shiftWindow");
 
 async function isOnShift(userId, role, at = new Date()) {
@@ -6,28 +6,23 @@ async function isOnShift(userId, role, at = new Date()) {
     return { allowed: true, shift: null };
   }
 
-  const connection = await pool.getConnection();
-  try {
-    const [rows] = await connection.query(
-      `SELECT s.id, s.label, s.start_time, s.end_time
-       FROM users u
-       JOIN shifts s ON s.id = u.shift_id AND s.is_active = 1
-       WHERE u.id = ?`,
-      [userId]
-    );
+  const rows = await query(
+    `SELECT s.id, s.label, s.start_time, s.end_time
+     FROM users u
+     JOIN shifts s ON s.id = u.shift_id AND s.is_active = true
+     WHERE u.id = $1`,
+    [userId]
+  );
 
-    const shift = rows[0] || null;
-    if (!shift) {
-      return { allowed: false, shift: null };
-    }
-
-    return {
-      allowed: isWithinWindow(minutesNowInJakarta(at), shift.start_time, shift.end_time),
-      shift
-    };
-  } finally {
-    connection.release();
+  const shift = rows[0] || null;
+  if (!shift) {
+    return { allowed: false, shift: null };
   }
+
+  return {
+    allowed: isWithinWindow(minutesNowInJakarta(at), shift.start_time, shift.end_time),
+    shift
+  };
 }
 
 function describeShift(shift) {

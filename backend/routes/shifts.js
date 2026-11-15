@@ -1,5 +1,5 @@
 const express = require("express");
-const { pool } = require("../models/db");
+const { query, pool } = require("../models/db");
 const { authenticateToken, authorizeRole } = require("../middleware/authMiddleware");
 const { timeToMinutes } = require("../utils/shiftWindow");
 
@@ -7,21 +7,26 @@ const router = express.Router();
 
 const onlySuperadmin = [authenticateToken, authorizeRole(["superadmin"])];
 
-async function validatePayload(connection, body, excludeShiftId) {
+const TIME = /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
+
+async function validatePayload(body, excludeShiftId) {
   const { start_time, end_time, label } = body;
 
   if (!start_time || !end_time) {
     return "Jam mulai dan jam selesai wajib diisi.";
   }
+  if (!TIME.test(String(start_time)) || !TIME.test(String(end_time))) {
+    return "Format jam harus HH:MM.";
+  }
   if (timeToMinutes(end_time) <= timeToMinutes(start_time)) {
     return "Jam selesai harus lebih besar dari jam mulai.";
   }
-  if (!label || label.trim() === "") {
+  if (typeof label !== "string" || label.trim() === "") {
     return "Nama sesi tidak boleh kosong.";
   }
 
-  const [bentrok] = await connection.query(
-    "SELECT id FROM shifts WHERE id <> ? AND start_time < ? AND end_time > ?",
+  const bentrok = await query(
+    "SELECT id FROM shifts WHERE id <> $1 AND start_time < $2 AND end_time > $3",
     [excludeShiftId || 0, end_time, start_time]
   );
   if (bentrok.length > 0) {
@@ -33,11 +38,9 @@ async function validatePayload(connection, body, excludeShiftId) {
 
 router.get("/", ...onlySuperadmin, async (req, res) => {
   try {
-    const connection = await pool.getConnection();
-    const [shifts] = await connection.query(
+    const shifts = await query(
       "SELECT id, label, start_time, end_time, is_active FROM shifts ORDER BY start_time ASC"
     );
-    connection.release();
     res.json(shifts);
   } catch (error) {
     console.error("Error fetching shifts:", error);
@@ -46,24 +49,20 @@ router.get("/", ...onlySuperadmin, async (req, res) => {
 });
 
 router.post("/", ...onlySuperadmin, async (req, res) => {
-  const connection = await pool.getConnection();
   try {
-    const problem = await validatePayload(connection, req.body, null);
+    const problem = await validatePayload(req.body, null);
     if (problem) {
-      connection.release();
       return res.status(400).json({ message: problem });
     }
 
     const { start_time, end_time, label } = req.body;
-    const [result] = await connection.query(
-      "INSERT INTO shifts (label, start_time, end_time) VALUES (?, ?, ?)",
+    const [row] = await query(
+      "INSERT INTO shifts (label, start_time, end_time) VALUES ($1, $2, $3) RETURNING id",
       [label.trim(), start_time, end_time]
     );
-    connection.release();
 
-    res.status(201).json({ id: result.insertId });
+    res.status(201).json({ id: row.id });
   } catch (error) {
-    connection.release();
     console.error("Error creating shift:", error);
     res.status(500).json({ message: "Server error creating shift" });
   }
@@ -71,27 +70,23 @@ router.post("/", ...onlySuperadmin, async (req, res) => {
 
 router.put("/:id", ...onlySuperadmin, async (req, res) => {
   const shiftId = Number(req.params.id);
-  const connection = await pool.getConnection();
   try {
-    const problem = await validatePayload(connection, req.body, shiftId);
+    const problem = await validatePayload(req.body, shiftId);
     if (problem) {
-      connection.release();
       return res.status(400).json({ message: problem });
     }
 
     const { start_time, end_time, label } = req.body;
-    const [result] = await connection.query(
-      "UPDATE shifts SET label = ?, start_time = ?, end_time = ? WHERE id = ?",
+    const result = await pool.query(
+      "UPDATE shifts SET label = $1, start_time = $2, end_time = $3 WHERE id = $4",
       [label.trim(), start_time, end_time, shiftId]
     );
-    connection.release();
 
-    if (result.affectedRows === 0) {
+    if (result.rowCount === 0) {
       return res.status(404).json({ message: "Sesi tidak ditemukan." });
     }
     res.json({ id: shiftId });
   } catch (error) {
-    connection.release();
     console.error("Error updating shift:", error);
     res.status(500).json({ message: "Server error updating shift" });
   }
@@ -99,13 +94,9 @@ router.put("/:id", ...onlySuperadmin, async (req, res) => {
 
 router.delete("/:id", ...onlySuperadmin, async (req, res) => {
   try {
-    const connection = await pool.getConnection();
-    const [result] = await connection.query("DELETE FROM shifts WHERE id = ?", [
-      Number(req.params.id)
-    ]);
-    connection.release();
+    const result = await pool.query("DELETE FROM shifts WHERE id = $1", [Number(req.params.id)]);
 
-    if (result.affectedRows === 0) {
+    if (result.rowCount === 0) {
       return res.status(404).json({ message: "Sesi tidak ditemukan." });
     }
     res.json({ message: "Sesi dihapus. Kasir di sesi itu jadi tanpa jadwal." });
@@ -120,27 +111,19 @@ router.put("/assign/:userId", ...onlySuperadmin, async (req, res) => {
   const shiftId = req.body.shift_id === null ? null : Number(req.body.shift_id);
 
   try {
-    const connection = await pool.getConnection();
-
-    const [users] = await connection.query(
-      "SELECT id FROM users WHERE id = ? AND role = 'cashier'",
-      [userId]
-    );
+    const users = await query("SELECT id FROM users WHERE id = $1 AND role = 'cashier'", [userId]);
     if (users.length === 0) {
-      connection.release();
       return res.status(404).json({ message: "Kasir tidak ditemukan." });
     }
 
     if (shiftId !== null) {
-      const [shifts] = await connection.query("SELECT id FROM shifts WHERE id = ?", [shiftId]);
+      const shifts = await query("SELECT id FROM shifts WHERE id = $1", [shiftId]);
       if (shifts.length === 0) {
-        connection.release();
         return res.status(404).json({ message: "Sesi tidak ditemukan." });
       }
     }
 
-    await connection.query("UPDATE users SET shift_id = ? WHERE id = ?", [shiftId, userId]);
-    connection.release();
+    await query("UPDATE users SET shift_id = $1 WHERE id = $2", [shiftId, userId]);
 
     res.json({ user_id: userId, shift_id: shiftId });
   } catch (error) {
