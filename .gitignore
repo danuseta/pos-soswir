@@ -60,7 +60,9 @@ Thumbs.db
 *.db
 
 # Uploads
-uploads/
+backend/uploads/products/*
+!backend/uploads/products/.gitkeep
+backend/reports/
 public/uploads/
 
 # Coverage

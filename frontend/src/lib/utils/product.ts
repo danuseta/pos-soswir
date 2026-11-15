@@ -1,3 +1,5 @@
+import { BACKEND_URL } from '$lib/apiConfig';
+
 export function validateProduct(product: any, isReseller: boolean, suppliers: any[]): string | null {
   if (!product.name) return 'Nama produk tidak boleh kosong';
   if (isNaN(product.price) || product.price < 0) return 'Harga harus berupa angka positif';
@@ -13,7 +15,7 @@ export function validateProduct(product: any, isReseller: boolean, suppliers: an
     : 'Supplier yang dipilih tidak valid';
 }
 
-export function createProductPayload(product: any, isReseller: boolean, isEditing: boolean, imageUrl: string, publicId: string | null) {
+export function createProductPayload(product: any, isReseller: boolean, isEditing: boolean, imageUrl: string, imageFilename: string | null) {
   return {
     name: product.name,
     price: parseFloat(String(product.price)),
@@ -22,7 +24,7 @@ export function createProductPayload(product: any, isReseller: boolean, isEditin
     supplier_id: isReseller ? product.supplier_id : null,
     description: product.description || '',
     image_url: imageUrl,
-    public_id: publicId,
+    image_filename: imageFilename,
     tax_percentage: isReseller ? parseFloat(String(product.tax_percentage)) : 0,
     tax_description: isReseller ? product.tax_description : ''
   };
@@ -73,4 +75,9 @@ export function createEditableProduct(product: any) {
     tax_percentage: product.tax_percentage || 0,
     tax_description: product.tax_description || ''
   };
+}
+
+export function imageSrc(url: string | null | undefined): string {
+  if (!url) return '';
+  return url.startsWith('/') ? `${BACKEND_URL}${url}` : url;
 }

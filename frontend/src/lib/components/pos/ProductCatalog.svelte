@@ -3,6 +3,7 @@
   import IconWrapper from '$lib/components/IconWrapper.svelte';
   import { Card, CardContent } from '$lib/components/ui/card';
   import { formatCurrency } from '$lib/utils/format';
+  import { imageSrc } from '$lib/utils/product';
 
   export let products: any[] = [];
   export let isLoading = false;
@@ -23,7 +24,7 @@
     {#each products as product}
       <Card class={`overflow-hidden cursor-pointer hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02] ${product.stock <= 0 ? 'opacity-50 cursor-not-allowed' : ''}`} on:click={() => onAdd(product)}>
         <div class="relative">
-          {#if product.image_url}<img src={product.image_url} alt={product.name} class="w-full h-32 sm:h-36 md:h-38 xl:h-40 object-cover" />{:else}<div class="w-full h-32 sm:h-36 md:h-38 xl:h-40 bg-muted flex items-center justify-center"><IconWrapper icon={Package} className="h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 xl:h-12 xl:w-12 text-muted-foreground" /></div>{/if}
+          {#if product.image_url}<img src={imageSrc(product.image_url)} alt={product.name} class="w-full h-32 sm:h-36 md:h-38 xl:h-40 object-cover" />{:else}<div class="w-full h-32 sm:h-36 md:h-38 xl:h-40 bg-muted flex items-center justify-center"><IconWrapper icon={Package} className="h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 xl:h-12 xl:w-12 text-muted-foreground" /></div>{/if}
           {#if product.stock <= 0}<div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center"><span class="text-white font-medium text-xs sm:text-sm xl:text-sm">Stok Habis</span></div>{:else if product.stock <= 5}<div class="absolute top-2 right-2 bg-primary text-white text-xs px-2 py-1 rounded">Stok: {product.stock}</div>{/if}
         </div>
         <CardContent class="p-2 sm:p-3 xl:p-4">

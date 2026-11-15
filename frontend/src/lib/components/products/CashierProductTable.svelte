@@ -6,6 +6,7 @@
   import { ScrollArea } from '$lib/components/ui/scroll-area';
   import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '$lib/components/ui/table';
   import { formatCurrency } from '$lib/utils/format';
+  import { imageSrc } from '$lib/utils/product';
 
   export let products: any[] = [];
   export let totalItems = 0;
@@ -66,7 +67,7 @@
               <TableCell class="w-[200px] text-left">
                 <div class="flex items-center justify-start">
                   {#if product.image_url}
-                    <img src={product.image_url} alt={product.name} class="w-10 h-10 object-cover rounded mr-2" />
+                    <img src={imageSrc(product.image_url)} alt={product.name} class="w-10 h-10 object-cover rounded mr-2" />
                   {:else}
                     <div class="w-10 h-10 bg-muted rounded mr-2 flex items-center justify-center">
                       <IconWrapper icon={Package} className="h-5 w-5 text-muted-foreground" />

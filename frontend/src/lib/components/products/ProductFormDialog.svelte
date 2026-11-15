@@ -130,7 +130,7 @@
           <div>
             <Label for="image" class="text-sm font-medium">Pilih Gambar</Label>
             <input id="image" type="file" accept="image/*" on:change={handleImageSelect} class="mt-1 w-full text-sm text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-muted file:text-foreground hover:file:bg-accent" />
-            <p class="text-xs text-muted-foreground mt-1">Format: JPG, PNG, WebP. Maksimal 25MB</p>
+            <p class="text-xs text-muted-foreground mt-1">Format: JPG, PNG, WebP. Maksimal 5MB</p>
           </div>
         </div>
       </div>

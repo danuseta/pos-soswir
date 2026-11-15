@@ -11,7 +11,7 @@
   import ProductFilters from '$lib/components/products/ProductFilters.svelte';
   import ProductPageHeader from '$lib/components/products/ProductPageHeader.svelte';
   import { loadProductPageData, loadProducts as fetchProducts, saveProduct, uploadProductImage } from '$lib/services/productService';
-  import { createEditableProduct, createProductForm, createProductPayload, filterAndSortProducts, validateProduct } from '$lib/utils/product';
+  import { createEditableProduct, createProductForm, createProductPayload, filterAndSortProducts, imageSrc, validateProduct } from '$lib/utils/product';
 
   let products = [];
   let categories = [];
@@ -28,7 +28,7 @@
   let imageFile = null;
   let imagePreview = "";
   let isUploading = false;
-  let cloudinaryPublicId = null;
+  let imageFilename = null;
 
   let searchTerm = "";
   let categoryFilter = "";
@@ -50,13 +50,13 @@
     
     try {
       const data = await uploadProductImage(imageFile);
-      cloudinaryPublicId = data.publicId;
+      imageFilename = data.imageFilename;
       showAlertMessage('success', 'Gambar berhasil diunggah');
       return data.imageUrl;
     } catch (error) {
       console.error('Error uploading image:', error);
       if (error.message.includes('413') || error.message.includes('Payload Too Large')) {
-        showAlertMessage('error', 'Ukuran gambar terlalu besar. Maksimal 25MB');
+        showAlertMessage('error', 'Ukuran gambar terlalu besar. Maksimal 5MB');
       } else {
         showAlertMessage('error', `Gagal mengunggah gambar: ${error.message}`);
       }
@@ -102,7 +102,7 @@
     currentProduct = createProductForm(categories[0]?.id || null);
     imageFile = null;
     imagePreview = "";
-    cloudinaryPublicId = null;
+    imageFilename = null;
     showAddEditDialog = true;
   }
 
@@ -110,8 +110,8 @@
     editingProduct = product;
     currentProduct = createEditableProduct(product);
     imageFile = null;
-    imagePreview = product.image_url || "";
-    cloudinaryPublicId = product.cloudinary_public_id || null;
+    imagePreview = imageSrc(product.image_url);
+    imageFilename = product.image_filename || null;
     showAddEditDialog = true;
   }
 
@@ -123,15 +123,15 @@
       showAlertMessage('info', editingProduct ? "Memperbarui produk..." : "Menambah produk baru...");
 
       let imageUrl = currentProduct.image_url;
-      let publicId = cloudinaryPublicId;
+      let filename = imageFilename;
       
       if (imageFile) {
         imageUrl = await uploadImage();
-        publicId = cloudinaryPublicId;
+        filename = imageFilename;
         if (imageUrl === null) return;
       }
       
-      const productData = createProductPayload(currentProduct, isResellerCategory, Boolean(editingProduct), imageUrl, publicId);
+      const productData = createProductPayload(currentProduct, isResellerCategory, Boolean(editingProduct), imageUrl, filename);
       await saveProduct(editingProduct?.id || null, productData);
 
       await loadProducts();

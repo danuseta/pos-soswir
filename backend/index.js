@@ -9,14 +9,7 @@ if (missingEnvVars.length > 0) {
   process.exit(1);
 }
 
-const optionalEnvVars = ['CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET'];
-const missingOptionalVars = optionalEnvVars.filter(envVar => !process.env[envVar]);
-
-if (missingOptionalVars.length > 0) {
-  console.warn('⚠️  Optional environment variables not set:', missingOptionalVars.join(', '));
-  console.warn('Image upload functionality may not work properly.');
-}
-
+const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
@@ -58,8 +51,11 @@ app.use(helmet({
       connectSrc: ["'self'"]
     }
   } : false,
-  crossOriginEmbedderPolicy: false
+  crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
+
+app.use("/uploads", express.static(path.join(__dirname, "uploads"), { fallthrough: false, maxAge: "7d" }));
 
 const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
 const frontendUrlWithProtocol = frontendUrl.startsWith('http') ? frontendUrl : `http://${frontendUrl}`;
@@ -220,7 +216,6 @@ console.log("🚀 Server Configuration:");
 console.log(`   - Port: ${port}`);
 console.log(`   - Environment: ${process.env.NODE_ENV || 'development'}`);
 console.log(`   - Frontend URL: ${frontendUrlWithProtocol}`);
-console.log(`   - Cloudinary Cloud: ${process.env.CLOUDINARY_CLOUD_NAME || 'Not configured'}`);
 
 app.get("/", (req, res) => {
   res.json({
