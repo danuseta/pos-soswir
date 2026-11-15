@@ -18,7 +18,7 @@ services:
       retries: 20
 
   migrate:
-    image: ghcr.io/danuseta/pos-soswir-api:latest
+    image: ghcr.io/danuseta/pos-soswir-api:${IMAGE_TAG:-latest}
     profiles: ["tools"]
     env_file: .env
     environment:
@@ -32,7 +32,7 @@ services:
         condition: service_healthy
 
   api:
-    image: ghcr.io/danuseta/pos-soswir-api:latest
+    image: ghcr.io/danuseta/pos-soswir-api:${IMAGE_TAG:-latest}
     restart: unless-stopped
     env_file: .env
     environment:
@@ -50,7 +50,7 @@ services:
     mem_limit: 256m
 
   web:
-    image: ghcr.io/danuseta/pos-soswir-web:latest
+    image: ghcr.io/danuseta/pos-soswir-web:${IMAGE_TAG:-latest}
     restart: unless-stopped
     ports:
       - "127.0.0.1:3202:80"

@@ -15,7 +15,6 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  DEPLOY_PATH: /home/danuseta/projects/pos-soswir/deploy
   PUBLIC_URL: https://pos.danuseta.my.id
 
 jobs:
@@ -118,28 +117,8 @@ jobs:
           printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy
           chmod 600 ~/.ssh/deploy
           ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
-      - name: Ship the compose file
+      - name: Deploy this commit
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-        run: scp -i ~/.ssh/deploy deploy/compose.prod.yaml "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/compose.yaml"
-      - name: Migrate then restart
-        env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-        run: >-
-          ssh -i ~/.ssh/deploy "$DEPLOY_USER@$DEPLOY_HOST"
-          "set -e;
-          cd $DEPLOY_PATH;
-          docker compose pull db api web migrate;
-          docker compose up -d db;
-          docker compose run --rm migrate;
-          docker compose up -d --remove-orphans api web;
-          docker image prune -f"
-      - name: Smoke test
-        env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-        run: >-
-          ssh -i ~/.ssh/deploy "$DEPLOY_USER@$DEPLOY_HOST"
-          "for i in \$(seq 1 20); do curl -fsS http://127.0.0.1:3202/health > /dev/null && exit 0; sleep 3; done; exit 1"
+        run: ssh -i ~/.ssh/deploy "$DEPLOY_USER@$DEPLOY_HOST" "$GITHUB_SHA"
