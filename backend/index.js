@@ -23,12 +23,7 @@ const helmet = require("helmet");
 const compression = require("compression");
 const rateLimit = require("express-rate-limit");
 
-const { pool, createUserTable } = require("./models/db");
-const { createProductTable } = require("./models/product");
-const { createSalesTables } = require("./models/sale");
-const { createStoreSettingsTable } = require("./models/settings");
-const { createActivityLogTable } = require("./models/activity");
-const { createShiftTables } = require("./models/shift");
+const { pool, query } = require("./models/db");
 
 const activityCleanup = require("./utils/activityCleanup");
 const dailyStockScheduler = require("./utils/dailyStockScheduler");
@@ -155,23 +150,20 @@ app.use((req, res, next) => {
 
 app.get('/health', async (req, res) => {
   try {
-    const connection = await pool.getConnection();
-    const [result] = await connection.query('SELECT 1 as healthy');
-    connection.release();
-    
+    const [result] = await query("SELECT 1 AS healthy");
+
     const healthData = {
       status: 'healthy',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       memory: process.memoryUsage(),
       cpu: process.cpuUsage(),
-      database: result[0].healthy === 1 ? 'connected' : 'disconnected',
+      database: result.healthy === 1 ? 'connected' : 'disconnected',
       environment: process.env.NODE_ENV,
       version: require('./package.json').version,
       processId: process.pid,
       configuration: {
         frontendUrl: frontendUrlWithProtocol,
-        cloudinaryConfigured: !!(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET),
         cleanupEnabled: process.env.CLEANUP_ENABLED === 'true'
       }
     };
@@ -203,27 +195,19 @@ app.get('/metrics', authenticateToken, (req, res) => {
 
 const initializeDatabase = async () => {
   try {
-    const connection = await pool.getConnection();
+    await query("SELECT 1");
+    const [{ t }] = await query("SELECT to_regclass('public.users') AS t");
+    if (t === null) {
+      console.error("❌ Skema belum dipasang. Jalankan: npm run db:init");
+      process.exit(1);
+    }
     console.log("✅ Database connection established successfully");
-    connection.release();
-    
-    await Promise.all([
-      createUserTable(),
-      createProductTable(),
-      createSalesTables(),
-      createStoreSettingsTable(),
-      createActivityLogTable()
-    ]);
 
-    await createShiftTables();
-
-    console.log("✅ All database tables initialized");
-    
     if (isProduction || isStaging) {
       console.log("🚀 Initializing Activity Cleanup System...");
       await activityCleanup.initialize();
     }
-    
+
   } catch (error) {
     console.error("❌ Database initialization failed:", error);
     process.exit(1);
