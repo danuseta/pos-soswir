@@ -132,16 +132,22 @@ export async function exportTransactionsExcel(transactions: any[], options: Tran
   XLSX.writeFile(workbook, exportFilename(options, 'xlsx'));
 }
 
+const wibFormatter = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' });
+
+export function wibDate(value: string | Date | null | undefined): string {
+  if (!value) return '';
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  return wibFormatter.format(new Date(value));
+}
+
 export function filterAndSortTransactions(transactions: any[], search: string, dateRange: any, sortField: string, direction: string) {
   const query = search.toLowerCase();
   return transactions.filter((transaction) => {
     const matchesSearch = ['kasir', 'produk', 'kategori', 'payment_method']
       .some((field) => transaction[field]?.toLowerCase().includes(query));
     if (!dateRange.from || !dateRange.to) return matchesSearch;
-    const transactionDate = transaction.waktu?.split('T')[0] || '';
-    const from = dateRange.from instanceof Date ? dateRange.from.toISOString().split('T')[0] : dateRange.from;
-    const to = dateRange.to instanceof Date ? dateRange.to.toISOString().split('T')[0] : dateRange.to;
-    return matchesSearch && transactionDate >= from && transactionDate <= to;
+    const transactionDate = wibDate(transaction.waktu);
+    return matchesSearch && transactionDate >= wibDate(dateRange.from) && transactionDate <= wibDate(dateRange.to);
   }).sort((a, b) => {
     let left = a[sortField] || '';
     let right = b[sortField] || '';
