@@ -1,46 +1,37 @@
-const mysql = require('mysql2/promise');
-const bcrypt = require('bcryptjs');
-require('dotenv').config();
+const { Pool, types } = require("pg");
+require("dotenv").config();
 
-const pool = mysql.createPool({
+types.setTypeParser(types.builtins.INT8, (value) => Number(value));
+types.setTypeParser(types.builtins.DATE, (value) => value);
+
+const pool = new Pool({
   host: process.env.DB_HOST,
+  port: Number(process.env.DB_PORT || 5432),
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
-  timezone: 'Z'
+  max: 10,
+  options: "-c timezone=Asia/Jakarta"
 });
 
-const createUserTable = async () => {
-  const connection = await pool.getConnection();
+async function query(text, params) {
+  const result = await pool.query(text, params);
+  return result.rows;
+}
+
+async function withTransaction(work) {
+  const client = await pool.connect();
   try {
-    await connection.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        username VARCHAR(255) NOT NULL UNIQUE,
-        password VARCHAR(255) NOT NULL,
-        role ENUM('cashier', 'superadmin') NOT NULL DEFAULT 'cashier',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-    console.log('Users table created or already exists.');
-
-    const [rows] = await connection.query('SELECT * FROM users WHERE role = ?', ['superadmin']);
-    if (rows.length === 0) {
-      const hashedPassword = await bcrypt.hash('superadminpassword', 10);
-      await connection.query('INSERT INTO users (username, password, role) VALUES (?, ?, ?)', ['superadmin', hashedPassword, 'superadmin']);
-      console.log('Default superadmin created.');
-    }
+    await client.query("BEGIN");
+    const result = await work(client);
+    await client.query("COMMIT");
+    return result;
   } catch (error) {
-    console.error('Error creating users table or default superadmin:', error);
+    await client.query("ROLLBACK");
+    throw error;
   } finally {
-    connection.release();
+    client.release();
   }
-};
+}
 
-module.exports = {
-  pool,
-  createUserTable
-};
+module.exports = { pool, query, withTransaction };
