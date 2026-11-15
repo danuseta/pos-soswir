@@ -224,6 +224,17 @@ module.exports = [
     async run(ctx) {
       const product = await ctx.product("Kue Lapis");
       const entryId = await addDailyStock(ctx, product, 20);
+      const update = await ctx.as("superadmin").put(`/api/products/${product.id}`, {
+        name: product.name,
+        description: product.description,
+        price: product.price,
+        category_id: product.category_id,
+        supplier_id: product.supplier_id,
+        tax_percentage: 20,
+        tax_description: product.tax_description,
+        image_url: product.image_url,
+        image_filename: product.image_filename
+      });
       const res = await sell(ctx, "kasir1", [{ product_id: product.id, quantity: 4 }]);
       const after = await ctx.product("Kue Lapis");
       const entry = await dailyEntry(ctx, entryId);
@@ -233,11 +244,13 @@ module.exports = [
       const gross = Number(product.price) * 4;
       const fee = gross * Number(entry.tax_percentage) / 100;
       ctx.actual(
-        `Status ${res.status}, stok katalog ${after.stock}, sale_taxes ${taxes.length} baris ` +
+        `Fee produk diubah ${update.status} jadi ${after.tax_percentage}%, ` +
+        `status ${res.status}, stok katalog ${after.stock}, sale_taxes ${taxes.length} baris ` +
         `(persen ${taxes[0]?.tax_percentage}, fee ${taxes[0]?.tax_amount}), entry persen ${entry.tax_percentage}, ` +
         `revenue entry ${entry.total_revenue}, terjual ${entry.quantity_sold}`
       );
-      ctx.evidence({ sale: res.body, entry, saleTaxes: taxes });
+      ctx.evidence({ productUpdate: update.body, productTaxPercentage: after.tax_percentage, sale: res.body, entry, saleTaxes: taxes });
+      ctx.expect(update.status === 200 && after.tax_percentage === 20 && Number(entry.tax_percentage) === 10, "fee produk tidak berbeda dari fee entry");
       ctx.expect(res.status === 201 && after.stock === 16, "stok katalog bukan 16");
       ctx.expect(taxes.length === 1 && Number(taxes[0].tax_percentage) === Number(entry.tax_percentage), "persentase fee beda dengan entry");
       ctx.expect(taxes.length === 1 && money(taxes[0].tax_amount) === money(fee), "nilai fee salah");
@@ -434,15 +447,23 @@ module.exports = [
       const product = await ctx.product("Bubur Ayam");
       const sale = await sell(ctx, "kasir2", [{ product_id: product.id, quantity: 1 }]);
       if (sale.status !== 201) throw new Error(`Penjualan awal gagal: ${sale.status}`);
+      const [{ crosses }] = await ctx.sql(
+        `SELECT (created_at AT TIME ZONE 'UTC')::date
+                <> ((current_date + time '00:30') AT TIME ZONE 'Asia/Jakarta' AT TIME ZONE 'UTC')::date AS crosses
+         FROM sales WHERE id = $1`,
+        [sale.body.sale_id]
+      );
+      if (!crosses) {
+        throw new Error("tidak bisa membuktikan zona waktu pada jam ini (00:00-07:00 WIB); jalankan ulang setelah 07:00 WIB");
+      }
       const before = await ctx.as("superadmin").get("/api/dashboard");
-      const at = ctx.wibNow().minutes < 30 ? "00:00:01" : "00:30";
       await ctx.sql(
-        `UPDATE sales SET created_at = (current_date + $2::time) AT TIME ZONE 'Asia/Jakarta' WHERE id = $1`,
-        [sale.body.sale_id, at]
+        `UPDATE sales SET created_at = (current_date + time '00:30') AT TIME ZONE 'Asia/Jakarta' WHERE id = $1`,
+        [sale.body.sale_id]
       );
       await ctx.sql(
-        `UPDATE transaction_logs SET created_at = (current_date + $2::time) AT TIME ZONE 'Asia/Jakarta' WHERE sale_id = $1`,
-        [sale.body.sale_id, at]
+        `UPDATE transaction_logs SET created_at = (current_date + time '00:30') AT TIME ZONE 'Asia/Jakarta' WHERE sale_id = $1`,
+        [sale.body.sale_id]
       );
       const [moved] = await ctx.sql(
         `SELECT to_char(created_at, 'YYYY-MM-DD HH24:MI:SS') AS wib,
