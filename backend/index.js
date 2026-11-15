@@ -199,7 +199,7 @@ const initializeDatabase = async () => {
     }
     console.log("✅ Database connection established successfully");
 
-    if (isProduction || isStaging) {
+    if (process.env.CLEANUP_ENABLED !== 'false') {
       console.log("🚀 Initializing Activity Cleanup System...");
       await activityCleanup.initialize();
     }
