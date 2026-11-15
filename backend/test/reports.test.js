@@ -62,7 +62,12 @@ test.before(async () => {
   await backdate(oldSaleId, "now() - interval '40 days'");
 
   earlySaleId = (await sell([{ product_id: e, quantity: 1 }])).id;
-  await backdate(earlySaleId, "date_trunc('day', now()) + interval '1 minute'");
+  await backdate(
+    earlySaleId,
+    `CASE WHEN now() >= (current_date + time '00:30') AT TIME ZONE 'Asia/Jakarta'
+          THEN (current_date + time '00:30') AT TIME ZONE 'Asia/Jakarta'
+          ELSE (current_date + time '00:00:01') AT TIME ZONE 'Asia/Jakarta' END`
+  );
 
   server = await startTestServer();
   token = await server.login("superadmin", "rahasia123");
@@ -74,7 +79,7 @@ test("GET /api/sales: pajak tidak terkali jumlah item", async () => {
   assert.strictEqual(res.status, 200);
   const sale = res.body.find((s) => s.id === mixedSaleId);
   assert.strictEqual(Number(sale.total_tax_amount), 1200);
-  assert.strictEqual(Number(sale.total_store_profit), 1200);
+  assert.strictEqual(Number(sale.total_store_profit), 26000 + 1200);
   assert.match(sale.categories, /Makanan/);
 });
 
@@ -105,8 +110,8 @@ test("laba toko sama di dashboard dan laporan transaksi", async () => {
 
 test("transaksi jam 00:30 WIB masuk hari ini", async () => {
   const res = await server.get("/api/dashboard", token);
-  assert.ok(res.body.todayStats.transactions >= 1);
-  assert.ok(res.body.todayStats.storeProfit >= 4000);
+  assert.strictEqual(res.body.todayStats.transactions, 2);
+  assert.strictEqual(Math.round(res.body.todayStats.storeProfit * 100), (26000 + 1200 + 4000) * 100);
 });
 
 test("transactions/bydate mencakup hari terakhir penuh", async () => {
@@ -121,7 +126,10 @@ test("sales/revenue: laba toko per hari tidak terkali", async () => {
   assert.strictEqual(res.status, 200);
   const today = res.body.daily[0];
   assert.strictEqual(Number(today.transaction_count), 2);
-  assert.strictEqual(Number(today.store_profit), 1200);
+  assert.strictEqual(Math.round(Number(today.store_profit) * 100), (26000 + 1200 + 4000) * 100);
+  const detail = await server.get(`/api/sales/revenue/detail?type=daily&date=${today.date}`, token);
+  const sumDetail = detail.body.reduce((sum, r) => sum + Number(r.keuntungan_toko), 0);
+  assert.strictEqual(Math.round(Number(today.store_profit) * 100), Math.round(sumDetail * 100));
 });
 
 test("sales/chart monthly memberi label bulan Indonesia", async () => {
@@ -135,7 +143,8 @@ test("sales/chart monthly memberi label bulan Indonesia", async () => {
 test("dashboard/revenue dan sales/:id dan tax-report merespons", async () => {
   const rev = await server.get("/api/dashboard/revenue", token);
   assert.strictEqual(rev.status, 200);
-  assert.strictEqual(Number(rev.body.daily[0].keuntungan_toko), 1200);
+  assert.strictEqual(Math.round(Number(rev.body.daily[0].keuntungan_toko) * 100), (26000 + 1200 + 4000) * 100);
+  assert.match(rev.body.weekly[0].periode, /^Minggu [1-5] - [A-Za-z]+ \d{4}$/);
   assert.match(rev.body.monthly[0].periode, /^[A-Za-z]+ \d{4}$/);
   const one = await server.get(`/api/sales/${mixedSaleId}`, token);
   assert.strictEqual(one.body.items.length, 4);

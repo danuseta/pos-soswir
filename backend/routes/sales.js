@@ -1,21 +1,11 @@
 const express = require("express");
 const router = express.Router();
 const { query, withTransaction } = require("../models/db");
+const { perSaleProfitJoins: taxTotalsJoin, storeProfitJoin } = require("../utils/reportSql");
 const { validateItems, createSale } = require("../services/checkout");
 const { authenticateToken, authorizeRole } = require("../middleware/authMiddleware");
 
 const MONTH_NAMES = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-
-const taxTotalsJoin = `
-  LEFT JOIN (
-    SELECT
-      sale_id,
-      SUM(store_profit) AS store_profit,
-      SUM(supplier_amount) AS supplier_amount
-    FROM sale_taxes
-    GROUP BY sale_id
-  ) st ON s.id = st.sale_id
-`;
 
 router.get("/", authenticateToken, authorizeRole(["superadmin", "cashier"]), async (req, res) => {
   try {
@@ -29,14 +19,15 @@ router.get("/", authenticateToken, authorizeRole(["superadmin", "cashier"]), asy
          JOIN categories c ON c.id = p.category_id
          WHERE si.sale_id = s.id) AS categories,
         COALESCE(st.tax_amount, 0) AS total_tax_amount,
-        COALESCE(st.store_profit, 0) AS total_store_profit
+        COALESCE(kp.store_profit, 0) AS total_store_profit
       FROM sales s
       LEFT JOIN users u ON u.id = s.user_id
       LEFT JOIN (
-        SELECT sale_id, SUM(tax_amount) AS tax_amount, SUM(store_profit) AS store_profit
+        SELECT sale_id, SUM(tax_amount) AS tax_amount
         FROM sale_taxes
         GROUP BY sale_id
       ) st ON st.sale_id = s.id
+      ${storeProfitJoin}
       ORDER BY s.created_at DESC
     `);
     res.json(sales);
@@ -164,7 +155,7 @@ router.get("/revenue", authenticateToken, authorizeRole(["superadmin"]), async (
       SELECT
         to_char(s.created_at, 'YYYY-MM-DD') AS date,
         SUM(s.total_amount) AS total_revenue,
-        COALESCE(SUM(st.store_profit), 0) AS store_profit,
+        COALESCE(SUM(kp.store_profit), 0) AS store_profit,
         COALESCE(SUM(st.supplier_amount), 0) AS supplier_profit,
         COUNT(s.id) AS transaction_count
       FROM sales s
@@ -179,7 +170,7 @@ router.get("/revenue", authenticateToken, authorizeRole(["superadmin"]), async (
         EXTRACT(YEAR FROM s.created_at)::int AS year,
         EXTRACT(WEEK FROM s.created_at)::int AS week,
         SUM(s.total_amount) AS total_revenue,
-        COALESCE(SUM(st.store_profit), 0) AS store_profit,
+        COALESCE(SUM(kp.store_profit), 0) AS store_profit,
         COALESCE(SUM(st.supplier_amount), 0) AS supplier_profit,
         COUNT(s.id) AS transaction_count
       FROM sales s
@@ -194,7 +185,7 @@ router.get("/revenue", authenticateToken, authorizeRole(["superadmin"]), async (
         EXTRACT(YEAR FROM s.created_at)::int AS year,
         EXTRACT(MONTH FROM s.created_at)::int AS month,
         SUM(s.total_amount) AS total_revenue,
-        COALESCE(SUM(st.store_profit), 0) AS store_profit,
+        COALESCE(SUM(kp.store_profit), 0) AS store_profit,
         COALESCE(SUM(st.supplier_amount), 0) AS supplier_profit,
         COUNT(s.id) AS transaction_count
       FROM sales s
@@ -208,7 +199,7 @@ router.get("/revenue", authenticateToken, authorizeRole(["superadmin"]), async (
       SELECT
         EXTRACT(YEAR FROM s.created_at)::int AS year,
         SUM(s.total_amount) AS total_revenue,
-        COALESCE(SUM(st.store_profit), 0) AS store_profit,
+        COALESCE(SUM(kp.store_profit), 0) AS store_profit,
         COALESCE(SUM(st.supplier_amount), 0) AS supplier_profit,
         COUNT(s.id) AS transaction_count
       FROM sales s

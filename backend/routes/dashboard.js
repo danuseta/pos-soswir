@@ -2,6 +2,8 @@ const express = require("express");
 const { query } = require("../models/db");
 const { authenticateToken, authorizeRole } = require("../middleware/authMiddleware");
 
+const { perSaleProfitJoins } = require("../utils/reportSql");
+
 const router = express.Router();
 
 const MONTH_NAMES = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
@@ -17,15 +19,7 @@ const saleTaxesPerItem = `
   ) st ON st.sale_id = si.sale_id AND st.product_id IS NOT DISTINCT FROM si.product_id
 `;
 
-const saleTaxesPerSale = `
-  LEFT JOIN (
-    SELECT sale_id,
-           SUM(store_profit) AS store_profit,
-           SUM(supplier_amount) AS supplier_amount
-    FROM sale_taxes
-    GROUP BY sale_id
-  ) st ON st.sale_id = s.id
-`;
+const saleTaxesPerSale = perSaleProfitJoins;
 
 const storeProfitSql = (dateFilter) => `
   SELECT COALESCE(SUM(
@@ -303,7 +297,7 @@ router.get("/revenue", authenticateToken, authorizeRole(["superadmin"]), async (
       SELECT
         s.created_at::date AS periode,
         SUM(s.total_amount) AS total_pendapatan,
-        COALESCE(SUM(st.store_profit), 0) AS keuntungan_toko,
+        COALESCE(SUM(kp.store_profit), 0) AS keuntungan_toko,
         COALESCE(SUM(st.supplier_amount), 0) AS keuntungan_supplier,
         COUNT(s.id) AS jumlah_transaksi
       FROM sales s
@@ -315,13 +309,12 @@ router.get("/revenue", authenticateToken, authorizeRole(["superadmin"]), async (
 
     const weeklyRows = await query(`
       SELECT
-        EXTRACT(WEEK FROM MIN(s.created_at))::int AS first_week,
-        EXTRACT(WEEK FROM date_trunc('month', MIN(s.created_at)))::int AS month_first_week,
+        EXTRACT(DAY FROM MIN(s.created_at))::int AS first_day,
         EXTRACT(MONTH FROM MIN(s.created_at))::int AS first_month,
         EXTRACT(WEEK FROM s.created_at)::int AS week_number,
         EXTRACT(YEAR FROM s.created_at)::int AS year,
         SUM(s.total_amount) AS total_pendapatan,
-        COALESCE(SUM(st.store_profit), 0) AS keuntungan_toko,
+        COALESCE(SUM(kp.store_profit), 0) AS keuntungan_toko,
         COALESCE(SUM(st.supplier_amount), 0) AS keuntungan_supplier,
         COUNT(s.id) AS jumlah_transaksi
       FROM sales s
@@ -330,8 +323,8 @@ router.get("/revenue", authenticateToken, authorizeRole(["superadmin"]), async (
       GROUP BY EXTRACT(WEEK FROM s.created_at), EXTRACT(YEAR FROM s.created_at)
       ORDER BY year DESC, week_number DESC
     `);
-    const weeklyRevenue = weeklyRows.map(({ first_week, month_first_week, first_month, ...row }) => ({
-      periode: `Minggu ${first_week - month_first_week + 1} - ${MONTH_NAMES[first_month - 1]} ${row.year}`,
+    const weeklyRevenue = weeklyRows.map(({ first_day, first_month, ...row }) => ({
+      periode: `Minggu ${Math.floor((first_day - 1) / 7) + 1} - ${MONTH_NAMES[first_month - 1]} ${row.year}`,
       ...row
     }));
 
@@ -340,7 +333,7 @@ router.get("/revenue", authenticateToken, authorizeRole(["superadmin"]), async (
         EXTRACT(MONTH FROM s.created_at)::int AS month,
         EXTRACT(YEAR FROM s.created_at)::int AS year,
         SUM(s.total_amount) AS total_pendapatan,
-        COALESCE(SUM(st.store_profit), 0) AS keuntungan_toko,
+        COALESCE(SUM(kp.store_profit), 0) AS keuntungan_toko,
         COALESCE(SUM(st.supplier_amount), 0) AS keuntungan_supplier,
         COUNT(s.id) AS jumlah_transaksi
       FROM sales s
@@ -358,7 +351,7 @@ router.get("/revenue", authenticateToken, authorizeRole(["superadmin"]), async (
       SELECT
         EXTRACT(YEAR FROM s.created_at)::int AS periode,
         SUM(s.total_amount) AS total_pendapatan,
-        COALESCE(SUM(st.store_profit), 0) AS keuntungan_toko,
+        COALESCE(SUM(kp.store_profit), 0) AS keuntungan_toko,
         COALESCE(SUM(st.supplier_amount), 0) AS keuntungan_supplier,
         COUNT(s.id) AS jumlah_transaksi
       FROM sales s
