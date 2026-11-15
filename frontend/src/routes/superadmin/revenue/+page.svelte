@@ -165,9 +165,9 @@
   <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0">
     <h2 class="text-2xl md:text-3xl font-bold tracking-tight">Total Pendapatan</h2>
     <div class="flex w-full sm:w-auto flex-col sm:flex-row gap-2">
-      <Button variant="outline" on:click={() => showExportDialog = true} disabled={isLoading} class="w-full sm:w-auto">
-        <IconWrapper icon={FileSpreadsheet} className="mr-2 h-4 w-4" />
-        Export Excel
+      <Button variant="outline" on:click={() => showExportDialog = true} disabled={isLoading || isExporting} class="w-full sm:w-auto">
+        <IconWrapper icon={FileSpreadsheet} className="mr-2 h-4 w-4 {isExporting ? 'animate-spin' : ''}" />
+        {isExporting ? 'Mengekspor...' : 'Export Excel'}
       </Button>
       <Button on:click={loadRevenueData} disabled={isLoading} class="w-full sm:w-auto">
         <IconWrapper icon={RefreshCw} className="mr-2 h-4 w-4 {isLoading ? 'animate-spin' : ''}" />
