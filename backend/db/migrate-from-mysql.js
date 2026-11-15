@@ -19,6 +19,25 @@ const TABLES = [
   { name: "user_activities", cols: ["id", "user_id", "username", "activity_type", "route_path", "ip_address", "user_agent", "created_at"], bool: [] }
 ];
 
+async function compareValues(source, target, table, row) {
+  const checks = [];
+  if (table.cols.includes("created_at")) {
+    checks.push(["MIN(created_at)", "UNIX_TIMESTAMP(MIN(created_at))", "EXTRACT(EPOCH FROM MIN(created_at))::bigint"]);
+    checks.push(["MAX(created_at)", "UNIX_TIMESTAMP(MAX(created_at))", "EXTRACT(EPOCH FROM MAX(created_at))::bigint"]);
+  }
+  if (table.name === "sales") checks.push(["SUM(total_amount)", "SUM(total_amount)", "SUM(total_amount)"]);
+  if (table.name === "products") checks.push(["SUM(stock)", "SUM(stock)", "SUM(stock)"]);
+  row.valueOk = true;
+  for (const [label, mysqlExpr, pgExpr] of checks) {
+    const [[m]] = await source.query(`SELECT ${mysqlExpr} AS v FROM \`${table.name}\``);
+    const { rows: [p] } = await target.query(`SELECT ${pgExpr} AS v FROM ${table.name}`);
+    const a = m.v === null ? null : Number(m.v);
+    const b = p.v === null ? null : Number(p.v);
+    row[label] = `${a}|${b}`;
+    if (a !== b) row.valueOk = false;
+  }
+}
+
 async function main() {
   const source = await mysql.createConnection({
     host: process.env.MYSQL_HOST,
@@ -28,6 +47,7 @@ async function main() {
     timezone: "Z",
     dateStrings: ["DATE"]
   });
+  await source.query("SET time_zone = '+00:00'");
   const target = new Client({ ...adminConfig(process.env.DB_NAME), options: "-c timezone=UTC" });
   await target.connect();
 
@@ -53,14 +73,16 @@ async function main() {
         `SELECT setval(pg_get_serial_sequence('${table.name}', 'id'), COALESCE(MAX(id), 1), MAX(id) IS NOT NULL) FROM ${table.name}`
       );
       const { rows: [{ n }] } = await target.query(`SELECT COUNT(*)::int AS n FROM ${table.name}`);
-      report.push({ table: table.name, source: rows.length, target: n });
+      const row = { table: table.name, source: rows.length, target: n };
+      await compareValues(source, target, table, row);
+      report.push(row);
     }
 
-    const mismatch = report.filter((r) => r.source !== r.target);
-    if (mismatch.length > 0) throw new Error(`Jumlah baris tidak cocok: ${JSON.stringify(mismatch)}`);
+    const mismatch = report.filter((r) => r.source !== r.target || r.valueOk === false);
+    if (mismatch.length > 0) throw new Error(`Data tidak cocok: ${JSON.stringify(mismatch)}`);
     await target.query("COMMIT");
   } catch (error) {
-    await target.query("ROLLBACK");
+    await target.query("ROLLBACK").catch(() => {});
     throw error;
   } finally {
     await source.end();
