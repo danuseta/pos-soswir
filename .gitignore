@@ -85,3 +85,6 @@ test-rate-limit-auth.js
 # Backup MySQL (berisi hash password)
 docs/archive/*.sql
 !docs/archive/pos-mysql.sql
+
+# Deploy VPS
+deploy/web/

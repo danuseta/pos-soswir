@@ -41,6 +41,10 @@ const port = process.env.PORT || 3001;
 const isProduction = process.env.NODE_ENV === 'production';
 const isStaging = process.env.NODE_ENV === 'staging';
 
+if (process.env.TRUST_PROXY) {
+  app.set('trust proxy', Number(process.env.TRUST_PROXY));
+}
+
 app.use(helmet({
   contentSecurityPolicy: isProduction ? {
     directives: {

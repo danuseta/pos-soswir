@@ -1,0 +1,13 @@
+**/node_modules
+**/.env
+**/.env.*
+backend/uploads
+backend/reports
+backend/test
+backend/scripts/scenario
+backend/scripts/fixtures
+frontend
+docs
+deploy/web
+deploy/.env
+.git
