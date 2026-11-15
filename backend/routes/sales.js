@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
-const { pool } = require("../models/db");
+const { pool, withTransaction } = require("../models/db");
+const { validateItems, createSale } = require("../services/checkout");
 const { authenticateToken, authorizeRole } = require("../middleware/authMiddleware");
 
 router.get("/", authenticateToken, authorizeRole(["superadmin", "cashier"]), async (req, res) => {
@@ -395,174 +396,24 @@ router.get("/:id", authenticateToken, authorizeRole(["superadmin", "cashier"]), 
 });
 
 router.post("/", authenticateToken, async (req, res) => {
-  const connection = await pool.getConnection();
+  const { items, customer_name = "Umum", payment_method = "Cash" } = req.body;
+  const problem = validateItems(items);
+  if (problem) return res.status(400).json({ message: problem });
+
   try {
-    await connection.beginTransaction();
-
-    const { items, customer_name = "Umum", payment_method = "Cash" } = req.body;
-    const user_id = req.user.id;
-    const username = req.user.username;
-
-    if (!items || items.length === 0) {
-      await connection.rollback();
-      connection.release();
-      return res.status(400).json({ message: "No items in the sale" });
-    }
-
-    let total_amount = 0;
-    for (const item of items) {
-      total_amount += item.price * item.quantity;
-    }
-
-    const [saleResult] = await connection.query(
-      "INSERT INTO sales (user_id, customer_name, total_amount, payment_method) VALUES (?, ?, ?, ?)",
-      [user_id, customer_name, total_amount, payment_method]
+    const sale = await withTransaction((client) =>
+      createSale(client, {
+        items,
+        customerName: String(customer_name).trim() || "Umum",
+        paymentMethod: String(payment_method),
+        user: { id: req.user.id, username: req.user.username }
+      })
     );
-
-    const sale_id = saleResult.insertId;
-
-    for (const item of items) {
-      const [productRows] = await connection.query(`
-        SELECT p.*, c.is_reseller, c.name as category_name 
-        FROM products p 
-        LEFT JOIN categories c ON p.category_id = c.id 
-        WHERE p.id = ?
-      `, [item.product_id]);
-
-      if (productRows.length === 0) {
-        await connection.rollback();
-        connection.release();
-        return res.status(404).json({ message: `Product ${item.product_id} not found` });
-      }
-
-      const product = productRows[0];
-      let daily_stock_entry_id = null;
-
-      if (product.is_reseller) {
-        const [dailyEntries] = await connection.query(`
-          SELECT * FROM daily_stock_entries 
-          WHERE product_id = ? AND entry_date = CURDATE() AND status = 'active'
-          ORDER BY created_at ASC
-        `, [item.product_id]);
-
-        if (dailyEntries.length === 0) {
-          await connection.rollback();
-          connection.release();
-          return res.status(400).json({ 
-            message: `Produk PUBJ ${product.name} belum ada stok hari ini` 
-          });
-        }
-
-        const dailyEntry = dailyEntries[0];
-        const availableStock = dailyEntry.quantity_in - dailyEntry.quantity_sold;
-
-        if (availableStock < item.quantity) {
-          await connection.rollback();
-          connection.release();
-          return res.status(400).json({ 
-            message: `Stok ${product.name} tidak mencukupi. Tersedia: ${availableStock}` 
-          });
-        }
-
-        daily_stock_entry_id = dailyEntry.id;
-
-        const newQuantitySold = dailyEntry.quantity_sold + item.quantity;
-        const newQuantityReturned = dailyEntry.quantity_in - newQuantitySold;
-        
-        let pricePerUnit = parseFloat(dailyEntry.price_per_unit) || parseFloat(product.price) || parseFloat(item.price);
-        
-        if (isNaN(pricePerUnit) || pricePerUnit <= 0) {
-          await connection.rollback();
-          connection.release();
-          return res.status(400).json({ 
-            message: `Invalid price for product ${product.name}` 
-          });
-        }
-        
-        const newTotalRevenue = newQuantitySold * pricePerUnit;
-        const newStoreFee = newTotalRevenue * (parseFloat(dailyEntry.tax_percentage) / 100);
-        const newSupplierEarning = newTotalRevenue - newStoreFee;
-
-        await connection.query(`
-          UPDATE daily_stock_entries 
-          SET quantity_sold = ?, quantity_returned = ?, total_revenue = ?, 
-              store_fee = ?, supplier_earning = ?, 
-              status = CASE WHEN ? = quantity_in THEN 'completed' ELSE 'active' END
-          WHERE id = ?
-        `, [newQuantitySold, newQuantityReturned, newTotalRevenue, 
-            newStoreFee, newSupplierEarning, newQuantitySold, dailyEntry.id]);
-
-        const [stockSum] = await connection.query(`
-          SELECT COALESCE(SUM(quantity_in - quantity_sold), 0) as available_stock
-          FROM daily_stock_entries 
-          WHERE product_id = ? AND status = 'active'
-        `, [item.product_id]);
-        
-        const newProductStock = parseInt(stockSum[0].available_stock);
-        
-        await connection.query(
-          "UPDATE products SET stock = ?, updated_at = NOW() WHERE id = ?",
-          [newProductStock, item.product_id]
-        );
-
-      } else {
-        if (product.stock < item.quantity) {
-          await connection.rollback();
-          connection.release();
-          return res.status(400).json({ 
-            message: `Insufficient stock for ${product.name}. Available: ${product.stock}` 
-          });
-        }
-
-        await connection.query(
-          "UPDATE products SET stock = stock - ? WHERE id = ?",
-          [item.quantity, item.product_id]
-        );
-      }
-
-      await connection.query(
-        "INSERT INTO sale_items (sale_id, product_id, quantity, price_at_sale, daily_stock_entry_id) VALUES (?, ?, ?, ?, ?)",
-        [sale_id, item.product_id, item.quantity, item.price, daily_stock_entry_id]
-      );
-
-      if (product.is_reseller && product.tax_percentage > 0) {
-        const gross_amount = item.price * item.quantity;
-        const tax_amount = gross_amount * (product.tax_percentage / 100);
-        const net_amount = gross_amount - tax_amount;
-
-        await connection.query(`
-          INSERT INTO sale_taxes (
-            sale_id, category_id, category_name, gross_amount, tax_percentage, 
-            tax_amount, net_amount, store_profit, supplier_amount, quantity, 
-            price_per_item, product_id, product_name, daily_stock_entry_id
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `, [
-          sale_id, product.category_id, product.category_name, gross_amount, 
-          product.tax_percentage, tax_amount, net_amount, tax_amount, net_amount,
-          item.quantity, item.price, product.id, product.name, daily_stock_entry_id
-        ]);
-      }
-
-      await connection.query(
-        "INSERT INTO transaction_logs (sale_id, user_id, username, product_id, product_name, quantity, price, total, daily_stock_entry_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        [sale_id, user_id, username, item.product_id, product.name, item.quantity, item.price, item.price * item.quantity, daily_stock_entry_id]
-      );
-    }
-
-    await connection.commit();
-    connection.release();
-
-    res.status(201).json({
-      message: "Sale completed successfully",
-      sale_id: sale_id,
-      total_amount: total_amount
-    });
-
+    res.status(201).json({ message: "Sale completed successfully", sale_id: sale.id, total_amount: sale.total });
   } catch (error) {
-    await connection.rollback();
-    connection.release();
+    if (error.status) return res.status(error.status).json({ message: error.message });
     console.error("Error creating sale:", error);
-    res.status(500).json({ message: "Server error creating sale", error: error.message });
+    res.status(500).json({ message: "Server error creating sale" });
   }
 });
 
