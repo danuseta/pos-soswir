@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { FileText, Filter, Search, SortAsc, SortDesc } from 'lucide-svelte';
+  import { FileSpreadsheet, Filter, Search, SortAsc, SortDesc } from 'lucide-svelte';
   import IconWrapper from '$lib/components/IconWrapper.svelte';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
@@ -18,7 +18,7 @@
 
 <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0">
   <h2 class="text-2xl md:text-3xl font-bold tracking-tight">Log Transaksi</h2>
-  <Button on:click={onExport} disabled={isLoading || isExporting} class="w-full sm:w-auto"><IconWrapper icon={FileText} className="mr-2 h-4 w-4 {isLoading || isExporting ? 'animate-spin' : ''}" />{isExporting ? 'Mengekspor...' : 'Ekspor ke Excel'}</Button>
+  <Button variant="outline" on:click={onExport} disabled={isLoading || isExporting} class="w-full sm:w-auto"><IconWrapper icon={FileSpreadsheet} className="mr-2 h-4 w-4 {isExporting ? 'animate-spin' : ''}" />{isExporting ? 'Mengekspor...' : 'Export Excel'}</Button>
 </div>
 <div class="bg-card rounded-lg shadow p-4 max-w-full">
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
