@@ -76,3 +76,6 @@ test-rate-limit-auth.js
 
 # OMC tooling state
 .omc/
+
+# Superpowers SDD scratch
+.superpowers/
