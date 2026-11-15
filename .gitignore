@@ -79,3 +79,7 @@ test-rate-limit-auth.js
 
 # Superpowers SDD scratch
 .superpowers/
+
+# Backup MySQL (berisi hash password)
+docs/archive/*.sql
+!docs/archive/pos-mysql.sql

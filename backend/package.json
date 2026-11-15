@@ -63,13 +63,13 @@
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.0",
-    "mysql2": "^3.14.1",
     "node-cron": "^4.1.0",
     "pg": "^8.23.1",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "cross-env": "^7.0.3",
+    "mysql2": "^3.24.6",
     "nodemon": "^3.1.10",
     "pm2": "^5.4.3"
   },
