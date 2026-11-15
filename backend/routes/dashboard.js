@@ -23,12 +23,10 @@ const saleTaxesPerSale = perSaleProfitJoins;
 
 const storeProfitSql = (dateFilter) => `
   SELECT COALESCE(SUM(
-    CASE WHEN c.is_reseller THEN st.store_profit ELSE si.quantity * si.price_at_sale END
+    CASE WHEN st.sale_id IS NOT NULL THEN st.store_profit ELSE si.quantity * si.price_at_sale END
   ), 0) AS store_profit
   FROM sale_items si
   JOIN sales s ON si.sale_id = s.id
-  LEFT JOIN products p ON si.product_id = p.id
-  LEFT JOIN categories c ON p.category_id = c.id
   ${saleTaxesPerItem}
   ${dateFilter}
 `;
@@ -419,13 +417,10 @@ router.get("/revenue/detail", authenticateToken, authorizeRole(["superadmin"]), 
         si.price_at_sale AS harga,
         (si.quantity * si.price_at_sale) AS total,
         CASE
-          WHEN c.is_reseller THEN st.store_profit
+          WHEN st.sale_id IS NOT NULL THEN st.store_profit
           ELSE si.quantity * si.price_at_sale
         END AS keuntungan_toko,
-        CASE
-          WHEN c.is_reseller THEN st.supplier_amount
-          ELSE 0
-        END AS keuntungan_supplier,
+        COALESCE(st.supplier_amount, 0) AS keuntungan_supplier,
         u.username AS kasir
       FROM sales s
       JOIN sale_items si ON s.id = si.sale_id

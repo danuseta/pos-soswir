@@ -271,13 +271,10 @@ router.get("/revenue/detail", authenticateToken, authorizeRole(["superadmin"]), 
         (si.quantity * si.price_at_sale) AS total,
         u.username AS kasir,
         CASE
-          WHEN c.is_reseller THEN st.store_profit
+          WHEN st.sale_id IS NOT NULL THEN st.store_profit
           ELSE si.quantity * si.price_at_sale
         END AS keuntungan_toko,
-        CASE
-          WHEN c.is_reseller AND st.supplier_amount IS NOT NULL THEN st.supplier_amount
-          ELSE 0
-        END AS keuntungan_supplier
+        COALESCE(st.supplier_amount, 0) AS keuntungan_supplier
       FROM sales s
       JOIN sale_items si ON s.id = si.sale_id
       LEFT JOIN products p ON si.product_id = p.id

@@ -153,3 +153,20 @@ test("dashboard/revenue dan sales/:id dan tax-report merespons", async () => {
   const cashier = await server.get("/api/dashboard/cashier", token);
   assert.strictEqual(cashier.status, 200);
 });
+
+test("laba K1 tidak berubah saat produk PUBJ dihapus permanen", async () => {
+  const sumToko = (rows) => Math.round(rows.reduce((sum, r) => sum + Number(r.keuntungan_toko), 0) * 100);
+  const before = await server.get("/api/dashboard", token);
+  const trxBefore = await server.get("/api/transactions", token);
+  const [risol] = await query("SELECT id FROM products WHERE name = 'Risol'");
+
+  const del = await server.del(`/api/products/${risol.id}/hard-delete`, token, { password: "rahasia123" });
+  assert.strictEqual(del.status, 200);
+
+  const after = await server.get("/api/dashboard", token);
+  const trxAfter = await server.get("/api/transactions", token);
+  assert.strictEqual(Math.round(after.body.totalStats.storeProfit * 100), Math.round(before.body.totalStats.storeProfit * 100));
+  assert.strictEqual(Math.round(after.body.totalStats.storeProfit * 100), TOTAL_STORE_PROFIT * 100);
+  assert.strictEqual(sumToko(trxAfter.body), sumToko(trxBefore.body));
+  assert.strictEqual(after.body.totalStats.supplierProfit, before.body.totalStats.supplierProfit);
+});

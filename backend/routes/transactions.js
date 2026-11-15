@@ -16,13 +16,10 @@ const profitColumns = `
   tl.username AS kasir,
   s.payment_method,
   CASE
-    WHEN c.is_reseller THEN st.store_profit
+    WHEN st.sale_id IS NOT NULL THEN st.store_profit
     ELSE tl.total
   END AS keuntungan_toko,
-  CASE
-    WHEN c.is_reseller AND st.supplier_amount IS NOT NULL THEN st.supplier_amount
-    ELSE 0
-  END AS keuntungan_supplier
+  COALESCE(st.supplier_amount, 0) AS keuntungan_supplier
 `;
 
 const profitJoins = `

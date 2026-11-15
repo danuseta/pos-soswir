@@ -1,10 +1,8 @@
 const storeProfitJoin = `
   LEFT JOIN (
     SELECT si.sale_id,
-           SUM(CASE WHEN c.is_reseller THEN COALESCE(stx.store_profit, 0) ELSE si.quantity * si.price_at_sale END) AS store_profit
+           SUM(CASE WHEN stx.sale_id IS NOT NULL THEN stx.store_profit ELSE si.quantity * si.price_at_sale END) AS store_profit
     FROM sale_items si
-    LEFT JOIN products p ON p.id = si.product_id
-    LEFT JOIN categories c ON c.id = p.category_id
     LEFT JOIN (
       SELECT sale_id, product_id, SUM(store_profit) AS store_profit
       FROM sale_taxes
