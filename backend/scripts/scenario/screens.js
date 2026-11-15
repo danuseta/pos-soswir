@@ -108,6 +108,8 @@ async function brokenImages(page) {
 function markFail(scenario, reason) {
   if (scenario.status === "pass") scenario.status = "fail";
   scenario.actual = `${scenario.actual} | Browser: ${reason}`;
+  scenario.uiStatus = "gagal";
+  scenario.uiReason = scenario.uiReason ? `${scenario.uiReason}; ${reason}` : reason;
 }
 
 async function captureOne(browser, scenario, { outDir, frontendUrl, loginAs, passwordOf }) {
@@ -121,6 +123,7 @@ async function captureOne(browser, scenario, { outDir, frontendUrl, loginAs, pas
 
     if (route === "/login") {
       Object.assign(browserCheck, await loginThroughForm(page, frontendUrl, as, passwordOf(as)));
+      if (!/jam shift/i.test(browserCheck.alert)) markFail(scenario, `pesan login tidak menyebut jam shift: "${browserCheck.alert}"`);
     } else {
       const res = await gotoReady(page, frontendUrl + route);
       browserCheck.httpStatus = res.status();
@@ -142,7 +145,7 @@ async function captureOne(browser, scenario, { outDir, frontendUrl, loginAs, pas
     const broken = await brokenImages(page);
     if (broken.length > 0) {
       browserCheck.brokenImages = broken;
-      markFail(scenario, `${broken.length} gambar di ${route} gagal dimuat, contoh src "${broken[0].src}" (diminta ke ${broken[0].resolved})`);
+      markFail(scenario, `${broken.length} gambar produk tidak tampil di ${route}`);
     }
 
     if (highlight && scenario.status !== "pass") {
@@ -172,9 +175,18 @@ async function captureScreens({ results, outDir, frontendUrl, loginAs, passwordO
   const browser = await chromium.launch();
   try {
     const screens = new Map(results.scenarios.filter((s) => s.screen).map((s) => [s.screen.page, s.screen]));
-    await warmUp(browser, frontendUrl, loginAs, [...screens.values()]);
+    try {
+      await warmUp(browser, frontendUrl, loginAs, [...screens.values()]);
+    } catch (error) {
+      console.warn(`Warm-up frontend gagal, lanjut memotret: ${error.message.split("\n")[0]}`);
+    }
     for (const scenario of results.scenarios) {
-      if (!scenario.screen) continue;
+      scenario.apiStatus = scenario.status;
+      if (!scenario.screen) {
+        scenario.uiStatus = "tidak ada layar";
+        continue;
+      }
+      scenario.uiStatus = "lulus";
       try {
         await captureOne(browser, scenario, { outDir, frontendUrl, loginAs, passwordOf });
       } catch (error) {

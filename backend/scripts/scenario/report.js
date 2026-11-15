@@ -30,6 +30,14 @@ const esc = (value) =>
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 
+const API_LABEL = { pass: "lulus", fail: "gagal", error: "error" };
+
+function verdict(s) {
+  const api = API_LABEL[s.apiStatus || s.status] || s.apiStatus || s.status;
+  const ui = s.uiStatus || "tidak diperiksa";
+  return `API: ${esc(api)} · Tampilan: ${esc(ui)}${s.uiReason ? ` (${esc(s.uiReason)})` : ""}`;
+}
+
 const badge = (status) => `<span class="badge ${esc(status)}">${esc(STATUS_LABEL[status] || status)}</span>`;
 const pct = (n, total) => (total === 0 ? 0 : Math.round((n / total) * 1000) / 10);
 
@@ -67,6 +75,7 @@ function failCard(s, img) {
     : "";
   return `<article class="card fail-card" id="gagal-${esc(s.id)}">
   <h3>${badge(s.status)} ${esc(s.id)} - ${esc(s.title)} <span class="muted">(${esc(s.group)})</span></h3>
+  <p class="verdict">${verdict(s)}</p>
   <ol class="steps">${steps}</ol>
   <div class="compare">
     <div class="box expected"><h4>Diharapkan</h4><p>${esc(s.expected)}</p></div>
@@ -102,13 +111,13 @@ function render(results, outDir) {
 
   const allRows = list.map((s) => `<tr class="row-${esc(s.status)}">
     <td>${s.status === "pass" ? esc(s.id) : `<a href="#gagal-${esc(s.id)}">${esc(s.id)}</a>`}</td>
-    <td>${esc(s.group)}</td><td>${esc(s.title)}</td><td>${badge(s.status)}</td>
+    <td>${esc(s.group)}</td><td>${esc(s.title)}</td><td>${badge(s.status)}<div class="verdict">${verdict(s)}</div></td>
     <td>${esc(s.expected)}</td><td>${esc(s.actual)}</td><td>${thumb(s, images.get(s.id))}</td></tr>`).join("");
 
   const bugRows = BUGS.map(([no, text, ids]) => {
     const proof = ids.length === 0
       ? `<span class="muted">Belum ada skenario khusus</span>`
-      : ids.map((id) => `${esc(id)} ${byId.has(id) ? badge(byId.get(id).status) : ""}`).join("<br>");
+      : ids.map((id) => (byId.has(id) ? `${esc(id)} ${badge(byId.get(id).status)}<div class="verdict">${verdict(byId.get(id))}</div>` : esc(id))).join("");
     return `<tr><td>${esc(no)}</td><td>${esc(text)}</td><td>${proof}</td></tr>`;
   }).join("");
 
@@ -168,6 +177,7 @@ tr.row-fail td, tr.row-error td { background: var(--fail-bg); }
 .badge.pass { color: var(--pass); background: var(--pass-bg); }
 .badge.fail { color: var(--fail); background: var(--fail-bg); }
 .badge.error { color: var(--error); background: var(--error-bg); }
+.verdict { font-size: .85rem; color: var(--muted); margin: 2px 0 8px; }
 .fail-card { border-left: 4px solid var(--fail); }
 .steps { margin: 0 0 12px; padding-left: 20px; }
 .compare { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-bottom: 12px; }
@@ -238,6 +248,7 @@ ${failSection}
   <div class="card">
     <ul>
       <li>Setiap skenario dijalankan ke backend sungguhan dengan database uji <code>pos_scenario</code> yang dibuat ulang setiap kali, lalu halaman terkait difoto di browser.</li>
+      <li>Setiap skenario punya dua hasil: <b>API</b> (logika backend lewat request langsung) dan <b>Tampilan</b> (halaman di browser). Status akhir gagal bila salah satunya gagal, jadi lihat keduanya untuk tahu bagian mana yang bermasalah.</li>
       <li><b>Lulus</b> berarti semua pengecekan cocok. <b>Gagal</b> berarti aplikasi berjalan tapi hasilnya tidak sesuai harapan. <b>Error</b> berarti skenario berhenti di tengah jalan.</li>
       <li>Di bagian "Yang gagal", kolom kiri adalah yang diharapkan dan kolom kanan yang benar-benar terjadi. Garis merah di screenshot menandai bagian yang terkait.</li>
       <li>Klik thumbnail di tabel untuk memperbesar, klik lagi untuk menutup.</li>
