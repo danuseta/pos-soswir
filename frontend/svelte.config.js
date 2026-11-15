@@ -44,7 +44,7 @@ const config = {
 				directives: {
 					'script-src': ['self'],
 					'style-src': ['self', 'unsafe-inline'],
-					'img-src': ['self', 'data:', 'blob:', 'https://res.cloudinary.com'],
+					'img-src': ['self', 'data:', 'blob:', 'https://res.cloudinary.com', 'http://localhost:3002'],
 					'font-src': ['self'],
 					'connect-src': ['self', 'http://localhost:3002'],
 					'manifest-src': ['self']

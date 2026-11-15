@@ -8,6 +8,7 @@
   import { ScrollArea } from '$lib/components/ui/scroll-area';
   import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '$lib/components/ui/table';
   import { formatCurrency } from '$lib/utils/format';
+  import { imageSrc } from '$lib/utils/product';
 
   export let entries: any[] = [];
   export let totalItems = 0;
@@ -51,7 +52,7 @@
           {#each entries as entry (entry.id)}
             <TableRow>
               <TableCell class="w-[110px] text-center"><div class="flex items-center gap-1 justify-center"><IconWrapper icon={Calendar} className="h-4 w-4 text-primary" /><span class="text-sm">{new Date(entry.entry_date).toLocaleDateString('id-ID')}</span></div></TableCell>
-              <TableCell class="w-[180px] text-left"><div class="flex items-center gap-2 justify-start">{#if entry.product_image}<img src={entry.product_image} alt={entry.product_name} class="w-8 h-8 object-cover rounded" />{:else}<div class="w-8 h-8 bg-muted rounded flex items-center justify-center"><IconWrapper icon={Package} className="h-4 w-4 text-muted-foreground" /></div>{/if}<span class="font-medium truncate text-sm">{entry.product_name}</span></div></TableCell>
+              <TableCell class="w-[180px] text-left"><div class="flex items-center gap-2 justify-start">{#if entry.product_image}<img src={imageSrc(entry.product_image)} alt={entry.product_name} class="w-8 h-8 object-cover rounded" />{:else}<div class="w-8 h-8 bg-muted rounded flex items-center justify-center"><IconWrapper icon={Package} className="h-4 w-4 text-muted-foreground" /></div>{/if}<span class="font-medium truncate text-sm">{entry.product_name}</span></div></TableCell>
               <TableCell class="w-[140px] text-center"><div class="flex items-center gap-1 justify-center"><IconWrapper icon={Users} className="h-4 w-4 text-primary" /><div class="min-w-0"><div class="font-medium truncate text-sm">{entry.supplier_name}</div>{#if entry.supplier_phone}<div class="text-xs text-muted-foreground truncate">{entry.supplier_phone}</div>{/if}</div></div></TableCell>
               <TableCell class="text-center font-medium">{entry.quantity_in}</TableCell><TableCell class="text-center"><span class="font-medium text-primary">{entry.quantity_sold}</span></TableCell><TableCell class="text-center"><span class="font-medium text-primary">{entry.quantity_returned}</span></TableCell>
               <TableCell class="text-center font-mono text-sm">{formatCurrency(entry.product_price || entry.price_per_unit)}</TableCell>
