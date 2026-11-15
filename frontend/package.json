@@ -9,6 +9,7 @@
     "build:prod": "NODE_ENV=production vite build",
     "build:analyze": "vite build --mode analyze",
     "preview": "vite preview",
+    "test": "node --test \"src/lib/utils/__tests__/*.test.mjs\"",
     "check:icons": "node scripts/lucide-ssr-check.js",
     "smoke:ssr": "npm run check:icons && node scripts/ssr-smoke.js",
     "prepare": "svelte-kit sync || echo ''",

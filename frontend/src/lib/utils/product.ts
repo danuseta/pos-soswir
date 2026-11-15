@@ -70,8 +70,8 @@ export function createProductForm(categoryId: number | null = null) {
 export function createEditableProduct(product: any) {
   return {
     ...product,
-    category_id: product.category?.id || null,
-    supplier_id: product.supplier?.id || null,
+    category_id: product.category_id ?? product.category?.id ?? null,
+    supplier_id: product.supplier_id ?? product.supplier?.id ?? null,
     tax_percentage: product.tax_percentage || 0,
     tax_description: product.tax_description || ''
   };
