@@ -44,7 +44,7 @@ test("completeEntries menutup entry hari ini dan yang tertinggal, revenue tidak 
             ($1, $2, current_date, 10, 4, 8000, 800, 7200, 10, 2000)`,
     [productId, supplier.id]
   );
-  await query("UPDATE products SET price = 9999 WHERE id = $1", [productId]);
+  await query("UPDATE products SET price = 9999, stock = 99 WHERE id = $1", [productId]);
 
   const result = await withTransaction((client) => completeEntries(client, null));
   assert.strictEqual(result.completed, 2);
@@ -100,4 +100,47 @@ test("POST stok harian mengisi price_per_unit dan tax dari produk", async () => 
   assert.strictEqual(Number(e.tax_percentage), 15);
   const [{ today }] = await query("SELECT current_date::text AS today");
   assert.strictEqual(e.d, today);
+});
+
+async function makeEntryWithRevenue(productId, quantityIn, quantitySold, revenue) {
+  const [e] = await query(
+    `INSERT INTO daily_stock_entries (product_id, supplier_id, entry_date, quantity_in, quantity_sold, total_revenue, store_fee, supplier_earning, tax_percentage, price_per_unit)
+     VALUES ($1, $2, current_date, $3, $4, $5, $5 * 0.1, $5 * 0.9, 10, 2000) RETURNING id`,
+    [productId, supplier.id, quantityIn, quantitySold, revenue]
+  );
+  return e.id;
+}
+
+test("PUT valid mengubah stok masuk tanpa menghitung ulang revenue", async () => {
+  const productId = await makeProduct("PutOk");
+  const entryId = await makeEntryWithRevenue(productId, 10, 3, 6000);
+  await query("UPDATE products SET price = 9999 WHERE id = $1", [productId]);
+
+  const res = await server.put(`/api/daily-stock/${entryId}`, { quantity_in: 15 }, token);
+  assert.strictEqual(res.status, 200);
+
+  const [e] = await query("SELECT quantity_in, quantity_returned, total_revenue FROM daily_stock_entries WHERE id = $1", [entryId]);
+  assert.deepStrictEqual(e, { quantity_in: 15, quantity_returned: 12, total_revenue: "6000.00" });
+  const [p] = await query("SELECT stock FROM products WHERE id = $1", [productId]);
+  assert.strictEqual(p.stock, 12);
+});
+
+test("PATCH complete menyelesaikan entry, revenue tetap, kedua kali 404", async () => {
+  const productId = await makeProduct("CompleteOk");
+  const entryId = await makeEntryWithRevenue(productId, 10, 4, 8000);
+  await query("UPDATE products SET price = 9999 WHERE id = $1", [productId]);
+
+  const res = await server.patch(`/api/daily-stock/${entryId}/complete`, {}, token);
+  assert.strictEqual(res.status, 200);
+  assert.strictEqual(res.body.quantity_returned, 6);
+  assert.strictEqual(Number(res.body.total_revenue), 8000);
+  assert.strictEqual(Number(res.body.supplier_earning), 7200);
+  assert.strictEqual(Number(res.body.store_fee), 800);
+  assert.strictEqual(res.body.updated_product_stock, 0);
+
+  const [e] = await query("SELECT status, total_revenue FROM daily_stock_entries WHERE id = $1", [entryId]);
+  assert.deepStrictEqual(e, { status: "completed", total_revenue: "8000.00" });
+
+  const again = await server.patch(`/api/daily-stock/${entryId}/complete`, {}, token);
+  assert.strictEqual(again.status, 404);
 });
