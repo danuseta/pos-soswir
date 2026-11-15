@@ -1,20 +1,18 @@
 const express = require("express");
-const { pool } = require("../models/db");
+const { query, withTransaction } = require("../models/db");
 const { authenticateToken, authorizeRole } = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
 router.get("/", authenticateToken, async (req, res) => {
   try {
-    const connection = await pool.getConnection();
-    const [rows] = await connection.query("SELECT setting_key, setting_value FROM store_settings");
-    connection.release();
-    
+    const rows = await query("SELECT setting_key, setting_value FROM store_settings");
+
     const settings = {};
     rows.forEach(row => {
       settings[row.setting_key] = row.setting_value;
     });
-    
+
     res.json(settings);
   } catch (error) {
     console.error("Error fetching settings:", error);
@@ -24,18 +22,17 @@ router.get("/", authenticateToken, async (req, res) => {
 
 router.put("/", authenticateToken, authorizeRole(["superadmin"]), async (req, res) => {
   const settings = req.body;
-  
+
   try {
-    const connection = await pool.getConnection();
-    
-    for (const [key, value] of Object.entries(settings)) {
-      await connection.query(
-        "INSERT INTO store_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?, updated_at = CURRENT_TIMESTAMP",
-        [key, value, value]
-      );
-    }
-    
-    connection.release();
+    await withTransaction(async (client) => {
+      for (const [key, value] of Object.entries(settings)) {
+        await client.query(
+          `INSERT INTO store_settings (setting_key, setting_value) VALUES ($1, $2)
+           ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value`,
+          [key, value]
+        );
+      }
+    });
     res.json({ message: "Settings updated successfully" });
   } catch (error) {
     console.error("Error updating settings:", error);
@@ -45,16 +42,14 @@ router.put("/", authenticateToken, authorizeRole(["superadmin"]), async (req, re
 
 router.get("/:key", authenticateToken, async (req, res) => {
   const { key } = req.params;
-  
+
   try {
-    const connection = await pool.getConnection();
-    const [rows] = await connection.query("SELECT setting_value FROM store_settings WHERE setting_key = ?", [key]);
-    connection.release();
-    
+    const rows = await query("SELECT setting_value FROM store_settings WHERE setting_key = $1", [key]);
+
     if (rows.length === 0) {
       return res.status(404).json({ message: "Setting not found" });
     }
-    
+
     res.json({ setting_key: key, setting_value: rows[0].setting_value });
   } catch (error) {
     console.error("Error fetching setting:", error);
