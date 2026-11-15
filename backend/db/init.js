@@ -1,3 +1,4 @@
+const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const { Client } = require("pg");
 const { adminConfig, createDatabaseIfMissing, applySchema } = require("./setup");
@@ -23,9 +24,13 @@ async function main() {
   try {
     const { rowCount } = await seed.query("SELECT 1 FROM users WHERE role = 'superadmin'");
     if (rowCount === 0) {
-      const hash = await bcrypt.hash("superadminpassword", 10);
+      const fromEnv = process.env.INIT_SUPERADMIN_PASSWORD;
+      const password = fromEnv || crypto.randomBytes(12).toString("base64url");
+      const hash = await bcrypt.hash(password, 10);
       await seed.query("INSERT INTO users (username, password, role) VALUES ($1, $2, 'superadmin')", ["superadmin", hash]);
-      console.log("Superadmin default dibuat (superadmin / superadminpassword). Segera ganti password.");
+      console.log(fromEnv
+        ? "Superadmin dibuat dengan password dari INIT_SUPERADMIN_PASSWORD."
+        : `Superadmin dibuat. Username: superadmin, password: ${password} (dicetak sekali, segera simpan/ganti).`);
     }
   } finally {
     await seed.end();
