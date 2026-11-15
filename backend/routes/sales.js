@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { query, withTransaction } = require("../models/db");
-const { perSaleProfitJoins: taxTotalsJoin, storeProfitJoin } = require("../utils/reportSql");
+const { perSaleProfitJoins: taxTotalsJoin, storeProfitJoin, saleTaxesPerItem } = require("../utils/reportSql");
 const { validateItems, createSale } = require("../services/checkout");
 const { authenticateToken, authorizeRole } = require("../middleware/authMiddleware");
 
@@ -270,23 +270,14 @@ router.get("/revenue/detail", authenticateToken, authorizeRole(["superadmin"]), 
         si.price_at_sale AS harga,
         (si.quantity * si.price_at_sale) AS total,
         u.username AS kasir,
-        CASE
-          WHEN st.sale_id IS NOT NULL THEN st.store_profit
-          ELSE si.quantity * si.price_at_sale
-        END AS keuntungan_toko,
+        COALESCE(st.store_profit, si.quantity * si.price_at_sale) AS keuntungan_toko,
         COALESCE(st.supplier_amount, 0) AS keuntungan_supplier
       FROM sales s
       JOIN sale_items si ON s.id = si.sale_id
       LEFT JOIN products p ON si.product_id = p.id
       LEFT JOIN categories c ON p.category_id = c.id
       LEFT JOIN users u ON s.user_id = u.id
-      LEFT JOIN (
-        SELECT sale_id, product_id,
-               SUM(store_profit) AS store_profit,
-               SUM(supplier_amount) AS supplier_amount
-        FROM sale_taxes
-        GROUP BY sale_id, product_id
-      ) st ON st.sale_id = si.sale_id AND st.product_id IS NOT DISTINCT FROM si.product_id
+      ${saleTaxesPerItem}
       WHERE ${whereClause}
       ORDER BY s.created_at DESC
     `, params);

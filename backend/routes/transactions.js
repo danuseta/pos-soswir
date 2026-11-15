@@ -1,6 +1,7 @@
 const express = require("express");
 const { query } = require("../models/db");
 const { authenticateToken, authorizeRole } = require("../middleware/authMiddleware");
+const { saleTaxesFor } = require("../utils/reportSql");
 
 const router = express.Router();
 
@@ -15,10 +16,7 @@ const profitColumns = `
   tl.total AS total,
   tl.username AS kasir,
   s.payment_method,
-  CASE
-    WHEN st.sale_id IS NOT NULL THEN st.store_profit
-    ELSE tl.total
-  END AS keuntungan_toko,
+  COALESCE(st.store_profit, tl.total) AS keuntungan_toko,
   COALESCE(st.supplier_amount, 0) AS keuntungan_supplier
 `;
 
@@ -27,13 +25,7 @@ const profitJoins = `
   LEFT JOIN products p ON tl.product_id = p.id
   LEFT JOIN categories c ON p.category_id = c.id
   LEFT JOIN sales s ON tl.sale_id = s.id
-  LEFT JOIN (
-    SELECT sale_id, product_id,
-           SUM(store_profit) AS store_profit,
-           SUM(supplier_amount) AS supplier_amount
-    FROM sale_taxes
-    GROUP BY sale_id, product_id
-  ) st ON st.sale_id = tl.sale_id AND st.product_id IS NOT DISTINCT FROM tl.product_id
+  ${saleTaxesFor("tl", "tl.sale_item_id")}
 `;
 
 router.get("/", authenticateToken, authorizeRole(["superadmin"]), async (req, res) => {

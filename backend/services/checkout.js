@@ -104,8 +104,8 @@ async function createSale(client, { items, customerName, paymentMethod, user }) 
   );
 
   for (const line of lines) {
-    await client.query(
-      "INSERT INTO sale_items (sale_id, product_id, quantity, price_at_sale, daily_stock_entry_id) VALUES ($1, $2, $3, $4, $5)",
+    const { rows: [saleItem] } = await client.query(
+      "INSERT INTO sale_items (sale_id, product_id, quantity, price_at_sale, daily_stock_entry_id) VALUES ($1, $2, $3, $4, $5) RETURNING id",
       [sale.id, line.product.id, line.quantity, line.price, line.entryId]
     );
 
@@ -113,20 +113,20 @@ async function createSale(client, { items, customerName, paymentMethod, user }) 
       await client.query(
         `INSERT INTO sale_taxes (
            sale_id, category_id, category_name, gross_amount, tax_percentage, tax_amount, net_amount,
-           store_profit, supplier_amount, quantity, price_per_item, product_id, product_name, daily_stock_entry_id
-         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $6, $7, $8, $9, $10, $11, $12)`,
+           store_profit, supplier_amount, quantity, price_per_item, product_id, product_name, daily_stock_entry_id, sale_item_id
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $6, $7, $8, $9, $10, $11, $12, $13)`,
         [
           sale.id, line.product.category_id, line.product.category_name, line.gross, line.fee.percentage,
           line.fee.storeFee, line.fee.supplierEarning, line.quantity, line.price, line.product.id,
-          line.product.name, line.entryId
+          line.product.name, line.entryId, saleItem.id
         ]
       );
     }
 
     await client.query(
-      `INSERT INTO transaction_logs (sale_id, user_id, username, product_id, product_name, quantity, price, total, daily_stock_entry_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-      [sale.id, user.id, user.username, line.product.id, line.product.name, line.quantity, line.price, line.gross, line.entryId]
+      `INSERT INTO transaction_logs (sale_id, user_id, username, product_id, product_name, quantity, price, total, daily_stock_entry_id, sale_item_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      [sale.id, user.id, user.username, line.product.id, line.product.name, line.quantity, line.price, line.gross, line.entryId, saleItem.id]
     );
   }
 

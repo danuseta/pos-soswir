@@ -170,3 +170,41 @@ test("laba K1 tidak berubah saat produk PUBJ dihapus permanen", async () => {
   assert.strictEqual(sumToko(trxAfter.body), sumToko(trxBefore.body));
   assert.strictEqual(after.body.totalStats.supplierProfit, before.body.totalStats.supplierProfit);
 });
+
+test("laba tidak dobel saat dua produk PUBJ dalam satu penjualan dihapus permanen", async () => {
+  const sum = (rows, field) => Math.round(rows.reduce((total, r) => total + Number(r[field]), 0) * 100);
+  const [pubj] = await query("SELECT id FROM categories WHERE name = 'PUBJ'");
+  const [supplier] = await query("SELECT id FROM suppliers WHERE name = 'Bu Ani'");
+  const pastel = await product("Pastel", 5000, 10, pubj.id, supplier.id, 20);
+  const lumpia = await product("Lumpia", 4000, 10, pubj.id, supplier.id, 10);
+  await query(
+    `INSERT INTO daily_stock_entries (product_id, supplier_id, entry_date, quantity_in, tax_percentage, price_per_unit)
+     VALUES ($1, $3, current_date, 10, 20, 5000), ($2, $3, current_date, 10, 10, 4000)`,
+    [pastel, lumpia, supplier.id]
+  );
+  const saleId = (await sell([{ product_id: pastel, quantity: 1 }, { product_id: lumpia, quantity: 2 }])).id;
+  const [{ today }] = await query("SELECT current_date::text AS today");
+
+  const snapshot = async () => {
+    const dash = await server.get("/api/dashboard", token);
+    const trx = await server.get("/api/transactions", token);
+    const detail = await server.get(`/api/sales/revenue/detail?type=daily&date=${today}`, token);
+    const sales = await server.get("/api/sales", token);
+    return {
+      storeProfit: Math.round(dash.body.totalStats.storeProfit * 100),
+      supplierProfit: Math.round(dash.body.totalStats.supplierProfit * 100),
+      trxToko: sum(trx.body, "keuntungan_toko"),
+      trxSupplier: sum(trx.body, "keuntungan_supplier"),
+      detailToko: sum(detail.body, "keuntungan_toko"),
+      saleToko: Math.round(Number(sales.body.find((s) => s.id === saleId).total_store_profit) * 100)
+    };
+  };
+
+  const before = await snapshot();
+  assert.strictEqual(before.saleToko, (1000 + 800) * 100);
+  for (const id of [pastel, lumpia]) {
+    const del = await server.del(`/api/products/${id}/hard-delete`, token, { password: "rahasia123" });
+    assert.strictEqual(del.status, 200);
+  }
+  assert.deepStrictEqual(await snapshot(), before);
+});

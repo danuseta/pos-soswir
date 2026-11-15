@@ -9,6 +9,7 @@
     "seed:products": "node scripts/seed-products.js",
     "dev": "nodemon index.js",
     "db:init": "node db/init.js",
+    "db:migrate": "node db/migrate.js",
     "db:migrate-mysql": "node db/migrate-from-mysql.js",
     "test": "node --test --test-concurrency=1 \"test/*.test.js\" \"utils/*.test.js\"",
     "scenario": "node scripts/scenario/run.js",

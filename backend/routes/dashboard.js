@@ -2,28 +2,17 @@ const express = require("express");
 const { query } = require("../models/db");
 const { authenticateToken, authorizeRole } = require("../middleware/authMiddleware");
 
-const { perSaleProfitJoins } = require("../utils/reportSql");
+const { perSaleProfitJoins, saleTaxesPerItem } = require("../utils/reportSql");
 
 const router = express.Router();
 
 const MONTH_NAMES = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 
-const saleTaxesPerItem = `
-  LEFT JOIN (
-    SELECT sale_id, product_id,
-           SUM(tax_amount) AS tax_amount,
-           SUM(store_profit) AS store_profit,
-           SUM(supplier_amount) AS supplier_amount
-    FROM sale_taxes
-    GROUP BY sale_id, product_id
-  ) st ON st.sale_id = si.sale_id AND st.product_id IS NOT DISTINCT FROM si.product_id
-`;
-
 const saleTaxesPerSale = perSaleProfitJoins;
 
 const storeProfitSql = (dateFilter) => `
   SELECT COALESCE(SUM(
-    CASE WHEN st.sale_id IS NOT NULL THEN st.store_profit ELSE si.quantity * si.price_at_sale END
+    COALESCE(st.store_profit, si.quantity * si.price_at_sale)
   ), 0) AS store_profit
   FROM sale_items si
   JOIN sales s ON si.sale_id = s.id
@@ -416,10 +405,7 @@ router.get("/revenue/detail", authenticateToken, authorizeRole(["superadmin"]), 
         si.quantity AS jumlah,
         si.price_at_sale AS harga,
         (si.quantity * si.price_at_sale) AS total,
-        CASE
-          WHEN st.sale_id IS NOT NULL THEN st.store_profit
-          ELSE si.quantity * si.price_at_sale
-        END AS keuntungan_toko,
+        COALESCE(st.store_profit, si.quantity * si.price_at_sale) AS keuntungan_toko,
         COALESCE(st.supplier_amount, 0) AS keuntungan_supplier,
         u.username AS kasir
       FROM sales s

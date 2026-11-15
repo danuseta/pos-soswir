@@ -126,6 +126,7 @@ CREATE TABLE sale_taxes (
   product_id integer REFERENCES products(id) ON DELETE SET NULL,
   product_name varchar(255) NOT NULL,
   daily_stock_entry_id integer REFERENCES daily_stock_entries(id) ON DELETE SET NULL,
+  sale_item_id integer REFERENCES sale_items(id) ON DELETE CASCADE,
   created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX idx_sale_taxes_sale ON sale_taxes (sale_id);
@@ -141,6 +142,7 @@ CREATE TABLE transaction_logs (
   price numeric(10,2) NOT NULL,
   total numeric(12,2) NOT NULL,
   daily_stock_entry_id integer REFERENCES daily_stock_entries(id) ON DELETE SET NULL,
+  sale_item_id integer REFERENCES sale_items(id) ON DELETE SET NULL,
   created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX idx_tl_created_at ON transaction_logs (created_at);
