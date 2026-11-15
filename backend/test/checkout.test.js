@@ -68,11 +68,29 @@ test("produk nonaktif ditolak", async () => {
   await assert.rejects(sell([{ product_id: id, quantity: 1 }]), (e) => e.status === 400);
 });
 
-test("dua checkout bersamaan untuk stok 1: satu berhasil, satu ditolak", async () => {
+test("checkout menunggu lock baris, lalu ditolak karena stok habis (bukan CHECK)", async () => {
   const id = await product("Terakhir", 5000, 1);
-  const results = await Promise.allSettled([sell([{ product_id: id, quantity: 1 }]), sell([{ product_id: id, quantity: 1 }])]);
-  assert.strictEqual(results.filter((r) => r.status === "fulfilled").length, 1);
-  assert.strictEqual(results.filter((r) => r.status === "rejected").length, 1);
+  const holder = await pool.connect();
+  let blocked;
+  try {
+    await holder.query("BEGIN");
+    await holder.query("UPDATE products SET stock = 0 WHERE id = $1", [id]);
+    blocked = sell([{ product_id: id, quantity: 1 }]).then(
+      (value) => ({ status: "fulfilled", value }),
+      (reason) => ({ status: "rejected", reason })
+    );
+    for (;;) {
+      const waiting = await query("SELECT 1 FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND datname = current_database()");
+      if (waiting.length > 0) break;
+    }
+    await holder.query("COMMIT");
+  } finally {
+    holder.release();
+  }
+  const result = await blocked;
+  assert.strictEqual(result.status, "rejected");
+  assert.strictEqual(result.reason.status, 400);
+  assert.match(result.reason.message, /tidak mencukupi/);
   const [p] = await query("SELECT stock FROM products WHERE id = $1", [id]);
   assert.strictEqual(p.stock, 0);
 });
