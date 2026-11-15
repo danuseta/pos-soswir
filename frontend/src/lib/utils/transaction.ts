@@ -1,5 +1,6 @@
 import { formatDateTime } from '$lib/utils/format';
 import { downloadCsv } from '$lib/utils/csv';
+import { compareValues } from '$lib/utils/sort';
 
 export type TransactionExportOptions = {
   format: 'detail' | 'monthly-product';
@@ -152,7 +153,7 @@ export function filterAndSortTransactions(transactions: any[], search: string, d
       left = new Date(left);
       right = new Date(right);
     }
-    const result = left > right ? 1 : -1;
+    const result = compareValues(left, right);
     return direction === 'asc' ? result : -result;
   });
 }

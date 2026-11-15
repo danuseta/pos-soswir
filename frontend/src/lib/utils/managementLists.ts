@@ -1,3 +1,5 @@
+import { compareValues } from '$lib/utils/sort';
+
 export function filterAndSortCategories(categories: any[], search: string, type: string, field: string, direction: string) {
   const query = search.toLowerCase();
   return categories.filter((category) => {
@@ -28,7 +30,7 @@ function compare(a: any, b: any, field: string, direction: string) {
     left = left.toLowerCase();
     right = right.toLowerCase();
   }
-  const result = left > right ? 1 : -1;
+  const result = compareValues(left, right);
   return direction === 'asc' ? result : -result;
 }
 
@@ -52,7 +54,7 @@ export function filterAndSortRevenue(items: any[], search: string, type: string,
     .sort((a, b) => {
       const left = field === 'date' || field === 'formatted_date' ? a.sort_date : a[field];
       const right = field === 'date' || field === 'formatted_date' ? b.sort_date : b[field];
-      const result = left > right ? 1 : -1;
+      const result = compareValues(left, right);
       return direction === 'asc' ? result : -result;
     });
 }

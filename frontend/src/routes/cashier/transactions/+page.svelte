@@ -12,6 +12,7 @@
   import { formatCurrency, formatDateTime } from "$lib/utils/format";
   import { downloadCsv } from '$lib/utils/csv';
   import TransactionTable from '$lib/components/transactions/TransactionTable.svelte';
+  import { filterAndSortTransactions } from '$lib/utils/transaction';
 
   let searchTerm = "";
   let transactions = [];
@@ -103,43 +104,7 @@
     currentPage = 1;
   }
 
-  $: filteredTransactions = transactions.filter(t => {
-    const matchesSearch = 
-      (t.kasir && t.kasir.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (t.produk && t.produk.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (t.kategori && t.kategori.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (t.payment_method && t.payment_method.toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    let matchesDateRange = true;
-    if (dateRange.from && dateRange.to) {
-      const txDateString = t.waktu ? t.waktu.split('T')[0] : '';
-      const fromDateString = dateRange.from instanceof Date ? dateRange.from.toISOString().split('T')[0] : dateRange.from;
-      const toDateString = dateRange.to instanceof Date ? dateRange.to.toISOString().split('T')[0] : dateRange.to;
-      
-      matchesDateRange = txDateString >= fromDateString && txDateString <= toDateString;
-    }
-    
-    return matchesSearch && matchesDateRange;
-  }).sort((a, b) => {
-    let aValue = a[sortField] || '';
-    let bValue = b[sortField] || '';
-    
-    if (typeof aValue === 'string') {
-      aValue = aValue.toLowerCase();
-      bValue = bValue.toLowerCase();
-    }
-    
-    if (sortField === 'waktu') {
-      aValue = new Date(aValue);
-      bValue = new Date(bValue);
-    }
-    
-    if (sortDirection === 'asc') {
-      return aValue > bValue ? 1 : -1;
-    } else {
-      return aValue < bValue ? 1 : -1;
-    }
-  });
+  $: filteredTransactions = filterAndSortTransactions(transactions, searchTerm, dateRange, sortField, sortDirection);
 
   $: paginatedTransactions = (() => {
     if (itemsPerPage >= filteredTransactions.length) {
