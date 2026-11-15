@@ -14,6 +14,8 @@ const pool = new Pool({
   options: "-c timezone=Asia/Jakarta"
 });
 
+pool.on("error", (err) => console.error("PG idle client error:", err));
+
 async function query(text, params) {
   const result = await pool.query(text, params);
   return result.rows;
@@ -21,16 +23,20 @@ async function query(text, params) {
 
 async function withTransaction(work) {
   const client = await pool.connect();
+  let failed;
   try {
     await client.query("BEGIN");
     const result = await work(client);
     await client.query("COMMIT");
     return result;
   } catch (error) {
-    await client.query("ROLLBACK");
+    failed = error;
+    try {
+      await client.query("ROLLBACK");
+    } catch {}
     throw error;
   } finally {
-    client.release();
+    client.release(failed);
   }
 }
 
