@@ -80,3 +80,22 @@ test("update-retention nilai valid tersimpan di store_settings", async () => {
   const rows = await query("SELECT setting_value FROM store_settings WHERE setting_key = 'activity_retention_days'");
   assert.strictEqual(rows[0].setting_value, "7");
 });
+
+test("batch size dan retensi env tidak valid jatuh ke default", () => {
+  const { ActivityCleanup } = require("../utils/activityCleanup");
+  const old = { b: process.env.CLEANUP_BATCH_SIZE, r: process.env.ACTIVITY_RETENTION_DAYS };
+  try {
+    for (const bad of ["0", "-5", "abc"]) {
+      process.env.CLEANUP_BATCH_SIZE = bad;
+      process.env.ACTIVITY_RETENTION_DAYS = bad;
+      const c = new ActivityCleanup();
+      assert.strictEqual(c.batchSize, 1000, `batch=${bad}`);
+      assert.strictEqual(c.retentionDays, 3, `retention=${bad}`);
+    }
+  } finally {
+    for (const [k, v] of [["CLEANUP_BATCH_SIZE", old.b], ["ACTIVITY_RETENTION_DAYS", old.r]]) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  }
+});

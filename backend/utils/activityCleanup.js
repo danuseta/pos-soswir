@@ -3,16 +3,21 @@ const { query } = require("../models/db");
 
 const WIB_OFFSET_MS = 7 * 60 * 60 * 1000;
 
+function positiveInt(value, fallback) {
+  const n = Number(value);
+  return Number.isInteger(n) && n >= 1 ? n : fallback;
+}
+
 class ActivityCleanup {
   constructor() {
-    this.retentionDays = Number(process.env.ACTIVITY_RETENTION_DAYS || 3);
-    this.batchSize = Number(process.env.CLEANUP_BATCH_SIZE || 1000);
+    this.retentionDays = positiveInt(process.env.ACTIVITY_RETENTION_DAYS, 3);
+    this.batchSize = positiveInt(process.env.CLEANUP_BATCH_SIZE, 1000);
     this.task = null;
   }
 
   async initialize() {
     const [row] = await query("SELECT setting_value FROM store_settings WHERE setting_key = 'activity_retention_days'");
-    if (row) this.retentionDays = Number(row.setting_value);
+    if (row) this.retentionDays = positiveInt(row.setting_value, this.retentionDays);
     this.destroy();
     this.task = cron.schedule(
       "0 0 * * *",
@@ -73,3 +78,4 @@ class ActivityCleanup {
 }
 
 module.exports = new ActivityCleanup();
+module.exports.ActivityCleanup = ActivityCleanup;
