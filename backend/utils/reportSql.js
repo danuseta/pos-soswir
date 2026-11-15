@@ -5,8 +5,7 @@ const saleTaxesFor = (row, saleItemId) => `
            SUM(x.supplier_amount) AS supplier_amount
     FROM sale_taxes x
     WHERE x.sale_id = ${row}.sale_id
-      AND (x.sale_item_id = ${saleItemId}
-           OR (x.sale_item_id IS NULL AND x.product_id IS NOT DISTINCT FROM ${row}.product_id))
+      AND x.sale_item_id = ${saleItemId}
   ) st ON true
 `;
 

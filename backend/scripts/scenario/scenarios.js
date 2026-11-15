@@ -528,7 +528,7 @@ module.exports = [
            WHERE NOT EXISTS (
              SELECT 1 FROM sale_taxes stx
              WHERE stx.sale_id = si.sale_id
-               AND (stx.sale_item_id = si.id OR (stx.sale_item_id IS NULL AND stx.product_id IS NOT DISTINCT FROM si.product_id))
+               AND stx.sale_item_id = si.id
            )) AS toko,
           (SELECT COALESCE(SUM(store_profit), 0) FROM sale_taxes) AS pubj
       `);
