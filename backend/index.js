@@ -160,7 +160,7 @@ app.get('/health', async (req, res) => {
       processId: process.pid,
       configuration: {
         frontendUrl: frontendUrlWithProtocol,
-        cleanupEnabled: process.env.CLEANUP_ENABLED === 'true'
+        cleanupEnabled: activityCleanup.status().isRunning
       }
     };
     
