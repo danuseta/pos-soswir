@@ -1,34 +1,45 @@
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
+
+const wibFormatter = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'Asia/Jakarta',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23'
+});
+
+function wibParts(value: string) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split('-').map(Number);
+    return { year, month, day, hours: 0, minutes: 0 };
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  const parts = Object.fromEntries(wibFormatter.formatToParts(date).map((p) => [p.type, p.value]));
+  return {
+    year: Number(parts.year),
+    month: Number(parts.month),
+    day: Number(parts.day),
+    hours: Number(parts.hour),
+    minutes: Number(parts.minute)
+  };
+}
+
+const pad = (n: number) => String(n).padStart(2, '0');
+
 export function formatDateTime(dateString: string): string {
   if (!dateString) return '';
-  
-  const parts = dateString.replace('T', ' ').split(' ');
-  const datePart = parts[0];
-  const timePart = parts[1] ? parts[1].split('.')[0] : '00:00:00';
-  
-  const [year, month, day] = datePart.split('-').map(Number);
-  const [hours, minutes] = timePart.split(':').map(Number);
-  
-  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 
-                     'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
-  
-  return `${day} ${monthNames[month - 1]} ${year}, ${String(hours).padStart(2, '0')}.${String(minutes).padStart(2, '0')}`;
+  const p = wibParts(dateString);
+  if (!p) return '';
+  return `${p.day} ${MONTHS[p.month - 1]} ${p.year}, ${pad(p.hours)}.${pad(p.minutes)}`;
 }
 
 export function formatTransactionDateTime(dateString: string): string {
-  if (!dateString) return 'Tanggal tidak valid';
-  
-  try {
-    const parts = dateString.replace('T', ' ').split(' ');
-    const datePart = parts[0];
-    const timePart = parts[1] ? parts[1].split('.')[0] : '00:00:00';
-    
-    const [year, month, day] = datePart.split('-').map(Number);
-    const [hours, minutes] = timePart.split(':').map(Number);
-    
-    return `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year} ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-  } catch (e) {
-    return 'Tanggal tidak valid';
-  }
+  const p = dateString ? wibParts(dateString) : null;
+  if (!p) return 'Tanggal tidak valid';
+  return `${pad(p.day)}/${pad(p.month)}/${p.year} ${pad(p.hours)}:${pad(p.minutes)}`;
 }
 
 export function formatCurrency(amount: number): string {
@@ -49,27 +60,16 @@ export function formatCompactNumber(amount: number): string {
 
 export function formatDate(dateString: string): string {
   if (!dateString) return '';
-  
-  const parts = dateString.replace('T', ' ').split(' ');
-  const datePart = parts[0];
-  
-  const [year, month, day] = datePart.split('-').map(Number);
-  
-  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 
-                     'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
-  
-  return `${day} ${monthNames[month - 1]} ${year}`;
+  const p = wibParts(dateString);
+  if (!p) return '';
+  return `${p.day} ${MONTHS[p.month - 1]} ${p.year}`;
 }
 
 export function formatTime(dateString: string): string {
   if (!dateString) return '';
-  
-  const parts = dateString.replace('T', ' ').split(' ');
-  const timePart = parts[1] ? parts[1].split('.')[0] : '00:00:00';
-  
-  const [hours, minutes] = timePart.split(':').map(Number);
-  
-  return `${String(hours).padStart(2, '0')}.${String(minutes).padStart(2, '0')}`;
+  const p = wibParts(dateString);
+  if (!p) return '';
+  return `${pad(p.hours)}.${pad(p.minutes)}`;
 }
 
 export function getCurrentWIBDateTime(): string {
